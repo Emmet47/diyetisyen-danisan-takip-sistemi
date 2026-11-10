@@ -1,0 +1,25 @@
+sequenceDiagram
+autonumber
+actor B as Diyetisyen B
+participant W as Web Paneli (React)
+participant MW as JWT + rol kontrolü (ASP.NET Core)
+participant API as :ClientsController
+participant S as :ClientService
+participant CR as :IClientRepository
+participant DB@{ "type": "database", "alias": "PostgreSQL" }
+B->>W: A'nın danışanının adresini elle yazar (/clients/{idA})
+W->>MW: GET /api/clients/{idA}
+alt token yok ya da süresi dolmuş
+  MW-->>W: 401 Unauthorized
+else token geçerli ama rol Dietitian değil (ör. danışan)
+  MW-->>W: 403 Forbidden
+else geçerli diyetisyen token'ı
+  MW->>API: istek (claim'ler: userId, role, dietitianId = B)
+  API->>S: GetAsync(clientId = idA)
+  S->>CR: GetAsync(dietitianId = B, clientId = idA)
+  CR->>DB: SELECT ... WHERE id = idA AND dietitian_id = B
+  DB-->>CR: 0 satır
+  CR-->>S: null
+  S-->>API: NotFound
+  API-->>W: 404 Not Found (kaydın var olduğu bile belli edilmez)
+end

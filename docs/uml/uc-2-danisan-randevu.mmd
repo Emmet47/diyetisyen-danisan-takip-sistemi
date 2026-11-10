@@ -1,0 +1,25 @@
+usecase-beta
+direction LR
+actor Diyetisyen("Diyetisyen")
+actor Eposta("E-posta Servisi")
+actor Bildirim("Bildirim Servisi (FCM)")
+systemBoundary DDTS["Diyetisyen: Danışan ve Randevu"]
+  UC08("UC-08 Danışan Ekle")
+  UC09("UC-09 Paket Limitini Denetle")
+  UC10("UC-10 Danışan Profilini Yönet")
+  UC11("UC-11 Ölçüm Ekle")
+  UC12("UC-12 İlerleme Panelini Görüntüle")
+  UC13("UC-13 PDF Rapor İndir")
+  UC14("UC-14 Çalışma Saatlerini Tanımla")
+  UC15("UC-15 Randevuları Yönet")
+end
+Diyetisyen -- UC08
+Diyetisyen -- UC10
+Diyetisyen -- UC11
+Diyetisyen -- UC12
+Diyetisyen -- UC14
+Diyetisyen -- UC15
+UC08 ..>:include UC09
+UC13 ..>:extend UC12
+UC08 -- Eposta
+UC15 -- Bildirim

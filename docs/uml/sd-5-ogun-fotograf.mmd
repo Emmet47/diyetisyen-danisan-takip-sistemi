@@ -1,0 +1,45 @@
+sequenceDiagram
+autonumber
+actor C as Danışan
+participant APP as Mobil Uygulama (Flutter)
+participant API as :MeController
+participant S as :MealLogService
+participant PR as :INutritionPlanRepository
+participant LR as :IMealLogRepository
+participant ST as :IPhotoStorage
+participant OS@{ "type": "database", "alias": "SeaweedFS (S3)" }
+participant UOW as :IUnitOfWork
+actor D as Diyetisyen
+C->>APP: "Bugün" ekranını açar
+APP->>API: GET /api/me/meals/today
+API->>S: GetTodayAsync(clientId)
+S->>PR: GetPublishedForClientAsync(clientId)
+PR-->>S: yayımlanmış plan
+S-->>API: bugünün öğünleri + kayıt durumları
+API-->>APP: 200 OK
+C->>APP: Öğle öğününü "Kısmen yedim" işaretler, not yazar
+APP->>API: POST /api/me/meal-logs {mealId, logDate, status, note}
+API->>S: LogMealAsync(clientId, cmd)
+S->>S: öğün bu danışanın yayımlanmış planında mı? (değilse 404)
+S->>LR: Add(mealLog)
+S->>UOW: SaveChangesAsync()
+API-->>APP: 201 Created {mealLogId}
+C->>APP: Fotoğraf çeker ve gönderir
+APP->>API: POST /api/me/meal-logs/{id}/photo (multipart/form-data)
+API->>S: AttachPhotoAsync(clientId, mealLogId, dosya)
+S->>S: dosya imzası JPEG/PNG mi? boyut ≤ 5 MB mi?
+alt geçersiz dosya
+  S-->>API: doğrulama hatası
+  API-->>APP: 400 "Sadece JPEG/PNG, en fazla 5 MB"
+else geçerli
+  S->>ST: UploadAsync(rastgele anahtar, dosya, içerik türü)
+  ST->>OS: PUT meal-photos/{guid}.jpg (herkese kapalı bucket)
+  S->>S: mealLog.AttachPhoto(PhotoInfo)
+  S->>UOW: SaveChangesAsync()
+  API-->>APP: 200 OK
+end
+D->>API: GET /api/meal-logs/{id}/photo-url (web paneli)
+API->>S: GetPhotoUrlAsync(dietitianId, mealLogId) — sahiplik kontrolü
+S->>ST: GetPresignedUrl(anahtar, 10 dk)
+ST-->>S: imzalı geçici bağlantı
+API-->>D: 200 {url, expiresAt}

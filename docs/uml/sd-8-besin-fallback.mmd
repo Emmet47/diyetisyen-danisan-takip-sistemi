@@ -1,0 +1,39 @@
+sequenceDiagram
+autonumber
+actor D as Diyetisyen
+participant W as Web Paneli (React)
+participant API as :FoodsController
+participant S as :FoodSearchService
+participant L as :LocalNutritionDataAdapter
+participant U as :UsdaFoodDataCentralAdapter
+participant Q as :ApiQuotaCounter
+participant FDC as USDA FoodData Central API
+D->>W: "oats" arar, "dış kaynakta da ara" seçili
+W->>API: GET /api/foods?q=oats&external=true
+API->>S: SearchAsync("oats", includeExternal: true)
+S->>L: SearchAsync("oats", 20)
+L-->>S: yerel sonuçlar (ortak + diyetisyenin kendi kayıtları)
+S->>U: SearchAsync("oats", 20)
+U->>Q: TryConsume()
+alt saatlik kota dolu
+  Q-->>U: false
+  U-->>S: ExternalSourceUnavailableException
+else kota var
+  U->>FDC: GET /fdc/v1/foods/search?query=oats (API anahtarı sunucuda, zaman aşımı 3 sn)
+  alt zaman aşımı, 5xx ya da 429
+    FDC--xU: hata
+    U-->>S: ExternalSourceUnavailableException
+  else 200 OK
+    FDC-->>U: JSON (fdcId, description, foodNutrients)
+    U->>U: Map(dto) → NutritionItem (kaynak adı + çekilme zamanı)
+    U-->>S: NutritionItem listesi
+  end
+end
+alt dış kaynak kullanılamadı
+  S->>S: hatayı logla (ayrıntı kullanıcıya gösterilmez)
+  S-->>API: FoodSearchResult(yerel sonuçlar, ExternalUnavailable = true)
+  API-->>W: 200 OK + "Dış kaynağa şu an ulaşılamıyor, yerel kayıtlar gösteriliyor"
+else
+  S-->>API: FoodSearchResult(yerel + dış sonuçlar)
+  API-->>W: 200 OK (her sonuçta kaynak ve tarih etiketi)
+end

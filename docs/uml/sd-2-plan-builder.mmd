@@ -1,0 +1,41 @@
+sequenceDiagram
+autonumber
+actor D as Diyetisyen
+participant W as Web Paneli (React)
+participant API as :PlansController
+participant S as :PlanService
+participant CR as :IClientRepository
+participant FR as :IFoodItemRepository
+participant B as :NutritionPlanBuilder
+participant P as :NutritionPlan
+participant PR as :INutritionPlanRepository
+participant UOW as :IUnitOfWork
+D->>W: Plan sihirbazı: danışan, başlık, tür, enerji hedefi, öğünler, besinler
+W->>API: POST /api/plans {clientId, title, planType, targetKcal, meals[ ]}
+API->>S: CreatePlanAsync(cmd)
+S->>CR: GetAsync(dietitianId, clientId)
+CR-->>S: client (başka diyetisyenin danışanıysa null → 404)
+S->>FR: GetManyAsync(dietitianId, foodIds)
+FR-->>S: besinler (ortak + diyetisyenin kendi kayıtları)
+S->>B: ForClient(client).WithTitle(...).WithType(Weekly).WithEnergyTarget(1800, "MifflinStJeor")
+loop her öğün ve besin satırı
+  S->>B: AddMeal(dayNo, ad, saat)
+  S->>B: AddFood(besin, porsiyon) / AddAlternative(besin, porsiyon)
+  B->>B: client.GetRestriction(besin.Id): Allergy → hata, Dislike → uyarı
+end
+S->>B: Build()
+alt hata listesi dolu (alerjen besin, boş öğün, geçersiz gün...)
+  B-->>S: DomainException (tüm hatalar)
+  S-->>API: doğrulama hatası
+  API-->>W: 400 Bad Request (hatalı öğün/besin listesi)
+else plan geçerli
+  B->>P: «create» Status = Draft
+  B-->>S: plan + uyarılar
+  S->>PR: Add(plan)
+  S->>UOW: SaveChangesAsync()
+  S->>P: CalculateTotals()
+  Note over P: Composite: plan → öğün → besin satırı<br>toplam enerji ve makrolar aşağıdan yukarı toplanır
+  P-->>S: NutrientTotals
+  S-->>API: planId, toplamlar, uyarılar
+  API-->>W: 201 Created
+end

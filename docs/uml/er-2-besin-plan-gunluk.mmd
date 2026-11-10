@@ -1,0 +1,92 @@
+erDiagram
+    dietitians |o--o{ food_items : "kendi besinleri (NULL = ortak)"
+    clients ||--o{ client_food_restrictions : "kısıtları"
+    food_items ||--o{ client_food_restrictions : "kısıtlanan besin"
+    dietitians ||--o{ plan_templates : "şablonları"
+    dietitians ||--o{ nutrition_plans : "planları"
+    clients ||--o{ nutrition_plans : "planları"
+    plan_templates |o--o{ nutrition_plans : "kaynak şablon"
+    nutrition_plans |o--o{ meals : "plan öğünleri"
+    plan_templates |o--o{ meals : "şablon öğünleri"
+    meals ||--o{ meal_items : "satırları"
+    food_items ||--o{ meal_items : "besin"
+    meal_items |o--o{ meal_items : "alternatifi"
+    meals ||--o{ meal_logs : "kayıtları"
+    clients ||--o{ meal_logs : "öğün günlüğü"
+    dietitians {
+        uuid id PK
+    }
+    clients {
+        uuid id PK
+        uuid dietitian_id FK
+    }
+    food_items {
+        uuid id PK
+        uuid dietitian_id FK "NULL = ortak kayıt"
+        varchar(150) name
+        varchar(50) portion_name "1 dilim, 1 adet ..."
+        numeric(6,1) portion_grams
+        numeric(6,1) energy_kcal_per_100g "0-900"
+        numeric(5,1) protein_g_per_100g
+        numeric(5,1) carbs_g_per_100g
+        numeric(5,1) fat_g_per_100g "makro toplamı <= 100"
+        varchar(50) source_name "Yerel | USDA FoodData Central"
+        varchar(50) external_id "dış kaynak kimliği"
+        timestamptz source_updated_at "güncellik"
+        timestamptz created_at
+    }
+    client_food_restrictions {
+        uuid client_id PK,FK
+        uuid food_item_id PK,FK
+        varchar(10) type "Allergy | Dislike"
+    }
+    plan_templates {
+        uuid id PK
+        uuid dietitian_id FK
+        varchar(100) name
+        varchar(500) description
+        varchar(6) plan_type "Daily | Weekly"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    nutrition_plans {
+        uuid id PK
+        uuid dietitian_id FK
+        uuid client_id FK "(client_id, dietitian_id) bileşik FK"
+        uuid source_template_id FK
+        varchar(100) title
+        varchar(6) plan_type "Daily | Weekly"
+        varchar(10) status "Draft | Published | Archived"
+        int target_kcal "800-6000"
+        varchar(30) energy_formula
+        timestamptz created_at
+        timestamptz published_at
+        timestamptz archived_at
+    }
+    meals {
+        uuid id PK
+        uuid plan_id FK "plan_id ya da template_id (yalnız biri)"
+        uuid template_id FK
+        smallint day_no "1-7"
+        varchar(50) name
+        time meal_time
+    }
+    meal_items {
+        uuid id PK
+        uuid meal_id FK
+        uuid food_item_id FK "RESTRICT: kullanılan besin silinemez"
+        numeric(5,2) portion_count "0 < x <= 20"
+        uuid alternative_to_item_id FK "aynı öğünde ana satır"
+    }
+    meal_logs {
+        uuid id PK
+        uuid client_id FK
+        uuid meal_id FK
+        date log_date "UK(client_id, meal_id, log_date)"
+        varchar(8) status "Eaten | Partial | Skipped"
+        varchar(500) note
+        varchar(200) photo_key UK "rastgele nesne anahtarı"
+        varchar(10) photo_content_type "image/jpeg | image/png"
+        int photo_size_bytes "<= 5 MB"
+        timestamptz logged_at
+    }

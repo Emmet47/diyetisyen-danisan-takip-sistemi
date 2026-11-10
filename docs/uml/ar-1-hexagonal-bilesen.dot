@@ -1,0 +1,87 @@
+digraph G {
+  graph [rankdir=LR, fontname="DejaVu Sans", fontsize=12, nodesep=0.45, ranksep=0.9, compound=true, splines=spline, forcelabels=true];
+  node  [fontname="DejaVu Sans", fontsize=10.5, shape=component, style=filled, fillcolor="#f2f2f2", color="#444444"];
+  edge  [fontname="DejaVu Sans", fontsize=9, color="#555555"];
+
+  subgraph cluster_clients {
+    label="İstemciler"; style="rounded,dashed"; color="#777777"; fontsize=11;
+    web    [label="«component»\nWeb Uygulaması (React)\nDiyetisyen paneli + Yönetici paneli"];
+    mobile [label="«component»\nDanışan Mobil Uygulaması\n(Flutter)"];
+  }
+
+  subgraph cluster_api {
+    label="«subsystem» DDTS Backend (.NET 10 · ASP.NET Core) — tek uygulama (monolit)"; style=rounded; color="#333333"; fontsize=11;
+
+    subgraph cluster_driving {
+      label="Sürücü (driving) adapter'lar · Ddts.Api"; style="rounded,dashed"; color="#888888"; fontsize=10;
+      rest [label="«component»\nREST API\nController'lar · JWT · rol kontrolü\nProblemDetails hata biçimi"];
+      jobs [label="«component»\nReminderWorker\n(BackgroundService)\nhatırlatmalar + abonelik süresi"];
+    }
+
+    p_in [shape=circle, width=0.16, height=0.16, fixedsize=true, label="", style=filled, fillcolor="white", xlabel="Gelen portlar\n(IClientService,\nIPlanService ...)"];
+
+    subgraph cluster_core {
+      label="Çekirdek — dış teknolojiyi tanımaz"; style="rounded,filled"; fillcolor="#fafafa"; color="#333333"; fontsize=10;
+      app    [label="«component»\nDdts.Application\nuse case servisleri · event handler'lar\nport arayüzleri"];
+      domain [label="«component»\nDdts.Domain\nvarlıklar · iş kuralları · domain event'ler\nComposite · Builder · Strategy · Prototype"];
+    }
+
+    p_repo  [shape=circle, width=0.16, height=0.16, fixedsize=true, label="", style=filled, fillcolor="white", xlabel="I*Repository\nIUnitOfWork"];
+    p_food  [shape=circle, width=0.16, height=0.16, fixedsize=true, label="", style=filled, fillcolor="white", xlabel="NutritionDataPort"];
+    p_push  [shape=circle, width=0.16, height=0.16, fixedsize=true, label="", style=filled, fillcolor="white", xlabel="IPushNotificationSender"];
+    p_mail  [shape=circle, width=0.16, height=0.16, fixedsize=true, label="", style=filled, fillcolor="white", xlabel="IEmailSender"];
+    p_file  [shape=circle, width=0.16, height=0.16, fixedsize=true, label="", style=filled, fillcolor="white", xlabel="IPhotoStorage"];
+    p_pay   [shape=circle, width=0.16, height=0.16, fixedsize=true, label="", style=filled, fillcolor="white", xlabel="IPaymentGateway"];
+    p_pdf   [shape=circle, width=0.16, height=0.16, fixedsize=true, label="", style=filled, fillcolor="white", xlabel="IReportPdfRenderer"];
+
+    subgraph cluster_driven {
+      label="Sürülen (driven) adapter'lar · Ddts.Infrastructure"; style="rounded,dashed"; color="#888888"; fontsize=10;
+      ef    [label="«component»\nEF Core kalıcılık\nEf*Repository · EfUnitOfWork\nDdtsDbContext"];
+      lfood [label="«component»\nLocalNutritionDataAdapter"];
+      usda  [label="«component»\nUsdaFoodDataCentralAdapter"];
+      fcm   [label="«component»\nFcmPushAdapter"];
+      smtp  [label="«component»\nSmtpEmailAdapter"];
+      s3    [label="«component»\nS3PhotoStorageAdapter"];
+      pay   [label="«component»\nFakePaymentAdapter\n(ödeme simülasyonu)"];
+      pdf   [label="«component»\nQuestPdfReportRenderer"];
+    }
+  }
+
+  pg      [shape=cylinder, fillcolor="#ffffff", label="PostgreSQL 18"];
+  objst   [shape=cylinder, fillcolor="#ffffff", label="SeaweedFS\n(S3 uyumlu, özel bucket)"];
+  fcmext  [shape=box3d, fillcolor="#ffffff", label="«external»\nFirebase Cloud Messaging"];
+  smtpext [shape=box3d, fillcolor="#ffffff", label="«external»\nSMTP sunucusu\n(geliştirmede Mailpit)"];
+  usdaext [shape=box3d, fillcolor="#ffffff", label="«external»\nUSDA FoodData Central API"];
+
+  web -> rest    [style=dashed, arrowhead=vee, label="HTTPS / JSON"];
+  mobile -> rest [style=dashed, arrowhead=vee, label="HTTPS / JSON"];
+
+  rest -> p_in [style=dashed, arrowhead=vee, label="«use»"];
+  jobs -> p_in [style=dashed, arrowhead=vee, label="«use»"];
+  p_in -> app  [arrowhead=none];
+  app -> domain [style=dashed, arrowhead=vee, label="«use»"];
+
+  app -> p_repo  [style=dashed, arrowhead=vee];
+  app -> p_food  [style=dashed, arrowhead=vee];
+  app -> p_push  [style=dashed, arrowhead=vee];
+  app -> p_mail  [style=dashed, arrowhead=vee];
+  app -> p_file  [style=dashed, arrowhead=vee];
+  app -> p_pay   [style=dashed, arrowhead=vee];
+  app -> p_pdf   [style=dashed, arrowhead=vee];
+
+  p_repo -> ef    [arrowhead=none];
+  p_food -> lfood [arrowhead=none];
+  p_food -> usda  [arrowhead=none];
+  p_push -> fcm   [arrowhead=none];
+  p_mail -> smtp  [arrowhead=none];
+  p_file -> s3    [arrowhead=none];
+  p_pay  -> pay   [arrowhead=none];
+  p_pdf  -> pdf   [arrowhead=none];
+
+  ef    -> pg      [style=dashed, arrowhead=vee, label="Npgsql"];
+  lfood -> pg      [style=dashed, arrowhead=vee, label="SQL (ILIKE)"];
+  usda  -> usdaext [style=dashed, arrowhead=vee, label="HTTPS + API anahtarı"];
+  fcm   -> fcmext  [style=dashed, arrowhead=vee, label="HTTPS"];
+  smtp  -> smtpext [style=dashed, arrowhead=vee, label="SMTP"];
+  s3    -> objst   [style=dashed, arrowhead=vee, label="S3 API"];
+}

@@ -1,0 +1,49 @@
+classDiagram
+direction TB
+class EnergyService {
+  <<Client>>
+  +CalculateForClientAsync(clientId: Guid, formula: string, activityFactor: decimal, adjustmentKcal: int) EnergyResult
+}
+class EnergyCalculator {
+  <<Context>>
+  +Calculate(formula: string, input: EnergyInput, activityFactor: decimal, adjustmentKcal: int) EnergyResult
+}
+class IEnergyStrategy {
+  <<interface · Strategy>>
+  +Name: string
+  +CalculateBmr(input: EnergyInput) decimal
+}
+class MifflinStJeorStrategy {
+  <<ConcreteStrategy>>
+  +Name: string = "MifflinStJeor"
+  +CalculateBmr(input: EnergyInput) decimal
+}
+class HarrisBenedictStrategy {
+  <<ConcreteStrategy>>
+  +Name: string = "HarrisBenedict"
+  +CalculateBmr(input: EnergyInput) decimal
+}
+class EnergyInput {
+  <<value object>>
+  +Sex: Sex
+  +AgeYears: int
+  +WeightKg: decimal
+  +HeightCm: decimal
+}
+class EnergyResult {
+  <<value object>>
+  +Formula: string
+  +BmrKcal: decimal
+  +DailyNeedKcal: decimal
+  +TargetKcal: decimal
+  +Disclaimer: string
+}
+IEnergyStrategy <|.. MifflinStJeorStrategy
+IEnergyStrategy <|.. HarrisBenedictStrategy
+EnergyService --> EnergyCalculator
+EnergyCalculator "1" o-- "1..*" IEnergyStrategy : stratejiler (DI ile gelir)
+IEnergyStrategy ..> EnergyInput
+EnergyCalculator ..> EnergyResult : «create»
+note for MifflinStJeorStrategy "Erkek: 10·kg + 6,25·cm − 5·yaş + 5<br>Kadın: 10·kg + 6,25·cm − 5·yaş − 161"
+note for HarrisBenedictStrategy "Erkek: 88,362 + 13,397·kg + 4,799·cm − 5,677·yaş<br>Kadın: 447,593 + 9,247·kg + 3,098·cm − 4,330·yaş"
+note for EnergyCalculator "Günlük ihtiyaç = BMH × aktivite katsayısı (1,2–1,9)<br>Hedef = günlük ihtiyaç + diyetisyenin düzeltmesi (ör. −500)"

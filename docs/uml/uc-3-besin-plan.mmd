@@ -1,0 +1,28 @@
+usecase-beta
+direction LR
+actor Diyetisyen("Diyetisyen")
+actor DisApi("Dış Besin API (USDA)")
+actor Bildirim("Bildirim Servisi (FCM)")
+systemBoundary DDTS["Diyetisyen: Besin ve Plan"]
+  UC16("UC-16 Besin Ara")
+  UC17("UC-17 Dış Kaynakta Ara")
+  UC18("UC-18 Yerel Besin Ekle")
+  UC19("UC-19 Enerji İhtiyacını Hesapla")
+  UC20("UC-20 Beslenme Planı Oluştur")
+  UC21("UC-21 Planı Yayımla")
+  UC22("UC-22 Şablon Oluştur / Düzenle")
+  UC23("UC-23 Şablonu Danışana Kopyala")
+  UC24("UC-24 Planlanan ve Gerçekleşen Öğünleri Karşılaştır")
+end
+Diyetisyen -- UC16
+Diyetisyen -- UC18
+Diyetisyen -- UC19
+Diyetisyen -- UC20
+Diyetisyen -- UC21
+Diyetisyen -- UC22
+Diyetisyen -- UC23
+Diyetisyen -- UC24
+UC17 ..>:extend UC16
+UC20 ..>:include UC16
+UC17 -- DisApi
+UC21 -- Bildirim

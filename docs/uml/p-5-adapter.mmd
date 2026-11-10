@@ -1,0 +1,78 @@
+classDiagram
+direction TB
+class FoodSearchService {
+  <<Client>>
+  +SearchAsync(query: string, includeExternal: bool) FoodSearchResult
+  +ImportAsync(externalId: string) Guid
+}
+class NutritionDataPort {
+  <<interface · Target / Port>>
+  +SourceName: string
+  +SearchAsync(query: string, limit: int) NutritionItem[0..#42;]
+  +GetByExternalIdAsync(externalId: string) NutritionItem [0..1]
+}
+class LocalNutritionDataAdapter {
+  <<Adapter · yerel DB>>
+  +SourceName: string = "Yerel"
+  +SearchAsync(query: string, limit: int) NutritionItem[0..#42;]
+  +GetByExternalIdAsync(externalId: string) NutritionItem [0..1]
+}
+class UsdaFoodDataCentralAdapter {
+  <<Adapter · dış API>>
+  +SourceName: string = "USDA FoodData Central"
+  +SearchAsync(query: string, limit: int) NutritionItem[0..#42;]
+  +GetByExternalIdAsync(externalId: string) NutritionItem [0..1]
+  -Map(dto: FdcFoodDto) NutritionItem
+}
+class UsdaFdcClient {
+  <<Adaptee>>
+  -apiKey: string
+  +SearchFoodsAsync(query: string, pageSize: int) FdcFoodDto[0..#42;]
+  +GetFoodAsync(fdcId: int) FdcFoodDto
+}
+class ApiQuotaCounter {
+  <<singleton>>
+  -limitPerHour: int
+  +TryConsume() bool
+}
+class FdcFoodDto {
+  +FdcId: int
+  +Description: string
+  +FoodNutrients: FdcNutrientDto[0..#42;]
+}
+class NutritionItem {
+  <<standart model>>
+  +Name: string
+  +EnergyKcalPer100g: decimal
+  +ProteinPer100g: decimal
+  +CarbsPer100g: decimal
+  +FatPer100g: decimal
+  +SourceName: string
+  +ExternalId: string [0..1]
+  +RetrievedAt: DateTime [0..1]
+}
+class FoodSearchResult {
+  +Items: NutritionItem[0..#42;]
+  +ExternalUnavailable: bool
+  +Message: string [0..1]
+}
+class DdtsDbContext {
+  <<EF Core DbContext>>
+}
+class IFoodItemRepository {
+  <<interface · Repository>>
+  +GetManyAsync(dietitianId: Guid, ids: Guid[0..#42;]) FoodItem[0..#42;]
+  +Add(food: FoodItem) void
+}
+NutritionDataPort <|.. LocalNutritionDataAdapter
+NutritionDataPort <|.. UsdaFoodDataCentralAdapter
+FoodSearchService "1" --> "2" NutritionDataPort : yerel + dış kaynak (keyed DI)
+FoodSearchService --> IFoodItemRepository : içe aktarılan besini kaydeder
+LocalNutritionDataAdapter --> DdtsDbContext : yerel kayıtları okur (EF Core)
+UsdaFoodDataCentralAdapter --> UsdaFdcClient : çağırır
+UsdaFoodDataCentralAdapter --> ApiQuotaCounter : kota
+UsdaFdcClient ..> FdcFoodDto : JSON yanıtı
+UsdaFoodDataCentralAdapter ..> NutritionItem : «create» (dönüştürür)
+FoodSearchService ..> FoodSearchResult : «create»
+note for UsdaFoodDataCentralAdapter "Zaman aşımı 3 sn. Hata, 429 ya da kota dolu ise<br>ExternalSourceUnavailableException fırlatır;<br>FoodSearchService yerel sonuçlarla devam eder."
+note for UsdaFdcClient "API anahtarı yalnızca sunucuda<br>(ortam değişkeni / user-secrets)"

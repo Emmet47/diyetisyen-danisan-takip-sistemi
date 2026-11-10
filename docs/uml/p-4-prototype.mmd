@@ -1,0 +1,39 @@
+classDiagram
+direction TB
+class TemplateService {
+  <<Client>>
+  +CopyToClientAsync(templateId: Guid, clientId: Guid, title: string) Guid
+}
+class IPrototype~T~ {
+  <<interface · Prototype>>
+  +Clone() T
+}
+class PlanTemplate {
+  +Name: string
+  +CreatePlanFor(client: Client, title: string) NutritionPlan
+}
+class Meal {
+  <<ConcretePrototype>>
+  +DayNo: int
+  +Name: string
+  +Time: TimeOnly
+  +Clone() Meal
+}
+class MealItem {
+  <<ConcretePrototype>>
+  +PortionCount: decimal
+  +Clone() MealItem
+}
+class NutritionPlan {
+  +Status: PlanStatus
+}
+class FoodItem
+IPrototype <|.. Meal : «bind» T→Meal
+IPrototype <|.. MealItem : «bind» T→MealItem
+PlanTemplate "0..1" *-- "1..*" Meal
+Meal "1" *-- "1..*" MealItem
+MealItem "0..*" --> "1" FoodItem : paylaşılır, kopyalanmaz
+TemplateService ..> PlanTemplate : CreatePlanFor()
+PlanTemplate ..> NutritionPlan : «create»
+note for PlanTemplate "CreatePlanFor(): her öğün Clone() ile yeni Id'li derin kopya olur.<br>Yeni plan Taslak (Draft) başlar, SourceTemplateId = şablonun Id'si.<br>Kopyada yapılan değişiklik şablonu etkilemez."
+note for Meal "Clone(): satırları da kopyalar,<br>alternatif bağlantılarını yeni Id'lere eşler"

@@ -1,0 +1,28 @@
+{
+ "theme": "neutral",
+ "fontFamily": "DejaVu Sans, Arial, sans-serif",
+ "class": {
+  "hideEmptyMembersBox": true,
+  "useMaxWidth": false
+ },
+ "sequence": {
+  "mirrorActors": false,
+  "showSequenceNumbers": false,
+  "wrap": false,
+  "useMaxWidth": false
+ },
+ "er": {
+  "layoutDirection": "TB",
+  "useMaxWidth": false
+ },
+ "themeCSS": ".state-start { fill: #111 !important; stroke: #111 !important; }",
+ "flowchart": {
+  "useMaxWidth": false
+ },
+ "state": {
+  "useMaxWidth": false
+ },
+ "usecase": {
+  "useMaxWidth": false
+ }
+}

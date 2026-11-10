@@ -1,0 +1,46 @@
+sequenceDiagram
+autonumber
+actor D as Diyetisyen
+participant API as :PlansController
+participant S as :PlanService
+participant PR as :INutritionPlanRepository
+participant OP as eskiPlan:NutritionPlan
+participant P as yeniPlan:NutritionPlan
+participant UOW as :EfUnitOfWork
+participant DB@{ "type": "database", "alias": "PostgreSQL" }
+participant ED as :DomainEventDispatcher
+participant H as :PlanPublishedHandler
+participant NS as :NotificationService
+participant F as :FcmPushAdapter
+actor C as Danışan
+D->>API: POST /api/plans/{id}/publish
+API->>S: PublishAsync(dietitianId, planId)
+S->>PR: GetAsync(dietitianId, planId)
+PR-->>S: plan (Draft)
+S->>S: alerjen kontrolü (client.GetRestriction)
+alt planda danışanın alerjik olduğu besin var
+  S-->>API: DomainException
+  API-->>D: 400 Bad Request "Alerjen besin içeren plan yayımlanamaz"
+else plan uygun
+  S->>PR: GetPublishedForClientAsync(clientId)
+  PR-->>S: eski yayımlanmış plan (varsa)
+  S->>UOW: ExecuteInTransactionAsync(iş)
+  Note over S,DB: İki adım tek transaction içinde
+  S->>OP: Archive(now)
+  S->>UOW: SaveChangesAsync()
+  UOW->>DB: UPDATE eski plan → Archived
+  S->>P: Publish(now) → Status = Published, Raise(PlanPublished)
+  S->>UOW: SaveChangesAsync()
+  UOW->>DB: UPDATE yeni plan → Published, COMMIT
+  UOW->>ED: DispatchAsync(olaylar) — commit'ten sonra
+  ED->>H: HandleAsync(PlanPublished)
+  H->>NS: NotifyAsync(danışan, PlanPublished, "Yeni planın hazır")
+  NS->>NS: client.AllowsNotification(PlanPublished)?
+  NS->>DB: INSERT notifications (uygulama içi liste)
+  opt izin açık ve cihaz anahtarı (push token) var
+    NS->>F: SendAsync(token, başlık, metin)
+    F-->>C: Telefona bildirim (içerikte sağlık verisi yok)
+  end
+  S-->>API: tamam
+  API-->>D: 200 OK
+end

@@ -1,0 +1,56 @@
+classDiagram
+direction TB
+class INutritionComponent {
+  <<interface · Component>>
+  +CalculateTotals() NutrientTotals
+}
+class NutritionPlan {
+  <<Composite>>
+  +CalculateTotals() NutrientTotals
+  +CalculateDayTotals(dayNo: int) NutrientTotals
+}
+class PlanTemplate {
+  <<Composite>>
+  +CalculateTotals() NutrientTotals
+}
+class Meal {
+  <<Composite>>
+  +AddItem(item: MealItem) void
+  +CalculateTotals() NutrientTotals
+}
+class MealItem {
+  <<Leaf>>
+  +PortionCount: decimal
+  +/IsAlternative: bool
+  +Grams() decimal
+  +CalculateTotals() NutrientTotals
+}
+class FoodItem {
+  +PortionGrams: decimal
+  +NutrientsFor(grams: decimal) NutrientTotals
+}
+class NutrientTotals {
+  <<value object>>
+  +EnergyKcal: decimal
+  +ProteinG: decimal
+  +CarbsG: decimal
+  +FatG: decimal
+  +Add(other: NutrientTotals) NutrientTotals
+}
+class PlanService {
+  <<Client>>
+  +GetPlanSummaryAsync(planId: Guid) PlanSummaryDto
+}
+INutritionComponent <|.. NutritionPlan
+INutritionComponent <|.. PlanTemplate
+INutritionComponent <|.. Meal
+INutritionComponent <|.. MealItem
+NutritionPlan "0..1" *-- "1..*" Meal
+PlanTemplate "0..1" *-- "1..*" Meal
+Meal "1" *-- "1..*" MealItem
+MealItem "0..*" --> "1" FoodItem
+PlanService ..> INutritionComponent : CalculateTotals()
+INutritionComponent ..> NutrientTotals : döndürür
+note for Meal "CalculateTotals() = ana satırların toplamı<br>(alternatif satırlar sayılmaz)"
+note for MealItem "Yaprak: FoodItem.NutrientsFor(PortionCount × PortionGrams)"
+note for NutritionPlan "Plan toplamı = öğün toplamlarının toplamı<br>Gün toplamı = o güne ait öğünlerin toplamı"

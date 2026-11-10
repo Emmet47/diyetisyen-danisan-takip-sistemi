@@ -1,0 +1,37 @@
+sequenceDiagram
+autonumber
+actor D as Diyetisyen
+participant W as Web Paneli (React)
+participant API as :MeasurementsController
+participant MS as :MeasurementService
+participant MR as :IMeasurementRepository
+participant RAPI as :ReportsController
+participant RS as :ReportService
+participant LR as :IMealLogRepository
+participant PDF as :IReportPdfRenderer
+D->>W: Ölçüm formu: tarih, kilo, boy, bel (+ isteğe bağlı kalça, yağ %)
+W->>API: POST /api/clients/{clientId}/measurements
+API->>MS: AddAsync(dietitianId, clientId, cmd)
+MS->>MR: Add(measurement) + SaveChanges
+alt aynı gün için ölçüm zaten var
+  MS-->>API: çakışma
+  API-->>W: 409 Conflict
+else kaydedildi
+  API-->>W: 201 Created
+end
+D->>W: İlerleme panelini açar (son 3 ay)
+W->>RAPI: GET /api/clients/{clientId}/progress?from=...&to=...
+RAPI->>RS: GetProgressAsync(dietitianId, clientId, from, to)
+RS->>MR: ListAsync(clientId, from, to)
+MR-->>RS: ölçümler (tarih sıralı)
+RS->>LR: ListAsync(clientId, from, to)
+LR-->>RS: öğün kayıtları
+RS->>RS: önceki ölçüme fark, hedefe kalan kilo, plan uyumu %, kayıt sıklığı
+RS-->>RAPI: ProgressReportDto
+RAPI-->>W: 200 OK → eğilim grafikleri (kilo, bel) + hedef çizgisi
+D->>W: "PDF indir"
+W->>RAPI: GET /api/clients/{clientId}/report.pdf?from=...&to=...
+RAPI->>RS: GetProgressAsync(...) ardından RenderPdfAsync(rapor)
+RS->>PDF: Render(rapor)
+PDF-->>RS: PDF baytları
+RAPI-->>W: 200 OK (application/pdf)

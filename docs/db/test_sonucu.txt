@@ -1,0 +1,36 @@
+Kod    Beklenen Gelen    Sonuç  Açıklama
+DB-01  23505    23505    GEÇTİ  Aynı e-posta ile ikinci hesap açılamaz
+DB-02  23514    23514    GEÇTİ  E-posta büyük harfle saklanamaz (küçük harfe çevrilmeli)
+DB-03  23505    23505    GEÇTİ  Bir diyetisyenin ikinci aktif aboneliği olamaz
+DB-04  ok       ok       GEÇTİ  Paket yükseltme: eski abonelik iptal edilip yenisi aktif açılabilir
+DB-05  23503    23503    GEÇTİ  Tenant: A diyetisyeni, B'nin danışanına plan açamaz
+DB-06  23503    23503    GEÇTİ  Tenant: A diyetisyeni, B'nin danışanına randevu açamaz
+DB-07  23505    23505    GEÇTİ  Danışanın ikinci yayımlanmış planı olamaz
+DB-08  ok       ok       GEÇTİ  Yeni plan yayımlanınca eskisi arşive alınır (izin verilen akış)
+DB-09  23514    23514    GEÇTİ  Yayımlanmış plan yayım tarihi olmadan tutulamaz
+DB-10  23514    23514    GEÇTİ  Arşiv planı arşiv tarihi olmadan tutulamaz
+DB-11  23514    23514    GEÇTİ  Öğün hem plana hem şablona bağlanamaz
+DB-12  23514    23514    GEÇTİ  Öğün sahipsiz (plansız ve şablonsuz) olamaz
+DB-13  23514    23514    GEÇTİ  Öğün günü 1-7 dışında olamaz
+DB-14  ok       ok       GEÇTİ  Alternatif satır aynı öğündeki ana satıra bağlanabilir
+DB-15  23503    23503    GEÇTİ  Alternatif satır başka öğündeki satıra bağlanamaz
+DB-16  23503    23503    GEÇTİ  Planda kullanılan besin silinemez
+DB-17  23514    23514    GEÇTİ  Porsiyon 0 olamaz
+DB-18  23514    23514    GEÇTİ  Besinde protein+karbonhidrat+yağ 100 g'ı geçemez
+DB-19  23505    23505    GEÇTİ  Aynı dış besin aynı diyetisyene iki kez aktarılamaz
+DB-20  23505    23505    GEÇTİ  Aynı gün için ikinci ölçüm girilemez
+DB-21  23514    23514    GEÇTİ  Mantıksız kilo (500 kg) girilemez
+DB-22  23505    23505    GEÇTİ  Aynı öğün aynı gün iki kez kaydedilemez
+DB-23  23514    23514    GEÇTİ  5 MB'tan büyük fotoğraf kaydedilemez
+DB-24  23514    23514    GEÇTİ  Yalnızca JPEG/PNG kabul edilir
+DB-25  23514    23514    GEÇTİ  Fotoğraf bilgileri eksik (yarım) tutulamaz
+DB-26  23P01    23P01    GEÇTİ  Çift randevu: aynı diyetisyene kesişen ikinci randevu açılamaz
+DB-27  ok       ok       GEÇTİ  Arka arkaya randevu (10:30 biter, 10:30 başlar) serbest
+DB-28  ok       ok       GEÇTİ  Farklı diyetisyenlerin aynı saatteki randevuları çakışma sayılmaz
+DB-29  ok       ok       GEÇTİ  İptal edilen randevunun saati yeniden alınabilir
+DB-30  23505    23505    GEÇTİ  Aynı hatırlatma (dedup_key) iki kez üretilemez
+DB-31  23514    23514    GEÇTİ  Çalışma saati bitişi başlangıçtan önce olamaz
+DB-32  ok+23P01 23P01+ok GEÇTİ  Eşzamanlı iki talepten yalnız biri kaydedilir
+DB-33  0 kayıt  0 kayıt  GEÇTİ  Danışan silinince ölçüm/plan/günlük/randevu kayıtları da silinir
+
+Toplam 33 test, 33 geçti, 0 kaldı.
