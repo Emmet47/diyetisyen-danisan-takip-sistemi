@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Uygulama katmanı: use case servisleri, port arayüzleri (I*Repository, NutritionDataPort,
+    IPhotoStorage ...) ve event handler'lar. Yalnızca Domain'e bağlı.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\Ddts.Domain\Ddts.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

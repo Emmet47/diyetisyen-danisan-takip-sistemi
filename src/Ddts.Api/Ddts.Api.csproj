@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!--
+    Sürücü (driving) adapter: REST controller'lar, JWT kimlik doğrulama, ReminderWorker
+    ve composition root (Program.cs - tüm bağımlılıklar burada birbirine bağlanır).
+  -->
+
+  <PropertyGroup>
+    <!-- "dotnet user-secrets" ile kişisel gizli ayarlar (ör. USDA API anahtarı) repoya girmeden saklanır. -->
+    <UserSecretsId>ddts-api</UserSecretsId>
+    <!-- Controller ve DTO'lardaki /// yorumları OpenAPI belgesine ve Scalar arayüzüne açıklama olarak geçer. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Yorum yazılmamış her public tip için uyarı vermesin -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Ddts.Application\Ddts.Application.csproj" />
+    <ProjectReference Include="..\Ddts.Infrastructure\Ddts.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Scalar.AspNetCore" />
+    <!-- Yalnızca "dotnet ef migrations ..." komutları için gerekli, yayına girmez. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>

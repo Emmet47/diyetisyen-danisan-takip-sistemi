@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Alan modeli (Domain): varlıklar, değer nesneleri, iş kuralları, domain event'ler.
+    Composite, Builder, Strategy ve Prototype desenleri burada.
+    Hiçbir projeye ve dış pakete bağlı DEĞİL (AT-01 mimari testi bunu denetler).
+  -->
+
+</Project>
