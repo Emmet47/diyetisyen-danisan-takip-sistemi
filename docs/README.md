@@ -4,6 +4,7 @@ Klasörler gereksinim belgesinin "10.2 Teknik çıktılar tablosu"ndaki "Repodak
 
 | Yer | İçerik | Belgedeki şekil |
 | --- | --- | --- |
+| `gereksinimler.md` | Fonksiyonel gereksinimler, iş kuralları, NFR, kalite senaryoları, KVKK | Bölüm 2 |
 | `uml/uc-1 … uc-4` (`.mmd`) | Kullanım durumu diyagramları | Şekil 3.1–3.4 |
 | `uml/cd-1`, `uml/cd-2` (`.mmd`) | Sınıf diyagramları: alan modeli | Şekil 4.1–4.2 |
 | `uml/cd-3` (`.dot`) | Enum ve değer nesneleri | Şekil 4.3 |
