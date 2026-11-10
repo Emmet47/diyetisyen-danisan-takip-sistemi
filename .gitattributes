@@ -1,0 +1,26 @@
+# Satır sonlarını sabitliyoruz: Windows (CRLF) ile Linux/WSL/Docker (LF) arasında
+# gereksiz "her satır değişti" farkları ve kırık shell script'leri oluşmasın.
+* text=auto eol=lf
+
+# Windows'a özel dosyalar CRLF kalır (Visual Studio .sln'i CRLF ile yazar)
+*.sln   text eol=crlf
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+*.ps1   text eol=crlf
+
+# İkili (binary) dosyalar: git bunlara dokunmaz, diff almaz
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.webp  binary
+*.ico   binary
+*.pdf   binary
+*.zip   binary
+*.jar   binary
+*.jks   binary
+*.keystore binary
+*.ttf   binary
+*.otf   binary
+*.woff  binary
+*.woff2 binary
