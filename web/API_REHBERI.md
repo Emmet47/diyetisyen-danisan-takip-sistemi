@@ -50,7 +50,7 @@ Backend'de yeni uç nokta eklendiyse: `git pull` yapıp 3. adımdaki komutu tekr
 
 **Giriş gerektiren uç noktalar** (giriş özelliği backend'e eklendiğinde):
 
-1. `POST /api/auth/login` uç noktasını e-posta ve parolayla dene, yanıttaki `token` değerini kopyala.
+1. `POST /api/auth/login` uç noktasını e-posta ve parolayla dene, yanıttaki `accessToken` değerini kopyala.
 2. Scalar'ın üstündeki **Authentication** bölümünde Bearer kutusuna token'ı yapıştır.
 3. Artık diğer uç noktaları o kullanıcı olarak deneyebilirsin. Token 60 dakika geçerli; süre dolunca 401 alırsın, yeniden giriş yap.
 
@@ -80,12 +80,14 @@ Ortak yardımcı hazır: `src/api/http.ts`. `fetch` yazmana gerek yok; token ekl
 // src/api/subscriptionPlans.ts
 import { api } from './http'
 
-// Alanlar örnek: gerçek adları ve tipleri Scalar'daki yanıt şemasından birebir al.
+// Alan adları sınıf diyagramındaki SubscriptionPlan ile aynı (docs/uml/cd-1), JSON'da camelCase.
+// Yeni bir tip yazarken adları ve tipleri Scalar'daki yanıt şemasından birebir al.
 export type SubscriptionPlan = {
   id: string
   name: string
-  clientLimit: number
+  maxClients: number
   monthlyPrice: number
+  isActive: boolean
 }
 
 export function getSubscriptionPlans() {
@@ -114,8 +116,11 @@ Giriş yapınca token'ı sakla, çıkışta sil:
 ```ts
 import { api, setToken } from './http'
 
-const sonuc = await api.post<{ token: string }>('/auth/login', { email, password })
-setToken(sonuc.token)   // bundan sonraki tüm istekler bu token'la gider
+// Yanıt biçimi gereksinim belgesinin 8.3 bölümündeki örnekle aynı
+type LoginResponse = { accessToken: string; expiresAt: string; role: 'Admin' | 'Dietitian' | 'Client' }
+
+const sonuc = await api.post<LoginResponse>('/auth/login', { email, password })
+setToken(sonuc.accessToken)   // bundan sonraki tüm istekler bu token'la gider
 // çıkış: setToken(null)
 ```
 
