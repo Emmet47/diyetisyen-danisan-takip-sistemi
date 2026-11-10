@@ -12,7 +12,7 @@ public static class DatabaseMigrator
     public static async Task ApplyMigrationsAsync(this IServiceProvider services, CancellationToken cancellationToken = default)
     {
         await using var scope = services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<DdtsDbContext>();
 
         // Henüz hiç migration yazılmadıysa yapacak bir şey yok.
         if (db.Database.GetMigrations().Any())

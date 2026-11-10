@@ -17,7 +17,7 @@ builder.Services.AddOpenApi();          // /openapi/v1.json (controller'lardaki 
 builder.Services.AddHealthChecks();
 
 // ---- Veritabanı: EF Core + PostgreSQL, tablo ve sütun adları snake_case ----
-builder.Services.AddDbContext<AppDbContext>((serviceProvider, options) =>
+builder.Services.AddDbContext<DdtsDbContext>((serviceProvider, options) =>
 {
     // Bağlantı dizesi DbContext ilk istendiğinde okunur; böylece testler kendi
     // veritabanını (Testcontainers) ayarlardan verebilir.

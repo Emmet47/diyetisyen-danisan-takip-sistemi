@@ -24,7 +24,7 @@ public sealed class AltyapiTests(ApiFactory factory) : IClassFixture<ApiFactory>
     public async Task Veritabanina_baglanilabiliyor()
     {
         await using var scope = factory.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<DdtsDbContext>();
 
         var baglandi = await db.Database.CanConnectAsync(TestContext.Current.CancellationToken);
 

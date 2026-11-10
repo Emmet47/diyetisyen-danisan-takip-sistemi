@@ -1,10 +1,11 @@
 namespace Ddts.Domain.Common;
 
 /// <summary>
-/// Alan içinde gerçekleşen bir olay (Observer / Domain Events deseni).
-/// Örnek: PlanPublished, AppointmentConfirmed.
+/// Alan içinde gerçekleşen bir olay (Observer / Domain Events deseni, Şekil 4.11).
+/// Örnek: PlanPublished, AppointmentRequested, AppointmentConfirmed.
 /// </summary>
 public interface IDomainEvent
 {
-    DateTimeOffset OccurredAt { get; }
+    /// <summary>Olayın gerçekleştiği an (UTC).</summary>
+    DateTime OccurredAt { get; }
 }

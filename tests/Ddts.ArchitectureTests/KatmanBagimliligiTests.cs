@@ -11,9 +11,9 @@ namespace Ddts.ArchitectureTests;
 /// </summary>
 public sealed class KatmanBagimliligiTests
 {
-    private static readonly Assembly DomainAssembly = typeof(Ddts.Domain.Common.Entity).Assembly;
+    private static readonly Assembly DomainAssembly = typeof(Ddts.Domain.Common.AggregateRoot).Assembly;
     private static readonly Assembly ApplicationAssembly = typeof(Ddts.Application.Abstractions.Persistence.IUnitOfWork).Assembly;
-    private static readonly Assembly InfrastructureAssembly = typeof(Ddts.Infrastructure.Persistence.AppDbContext).Assembly;
+    private static readonly Assembly InfrastructureAssembly = typeof(Ddts.Infrastructure.Persistence.DdtsDbContext).Assembly;
 
     // Çekirdeğin (Domain + Application) bilmemesi gereken dış dünya paketleri
     private static readonly string[] DisPaketler =
