@@ -1,0 +1,2 @@
+# Dart/Flutter kod denetimi kuralları ("flutter analyze" bunları kullanır).
+include: package:flutter_lints/flutter.yaml
