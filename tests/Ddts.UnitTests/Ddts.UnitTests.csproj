@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Birim testleri: Domain kuralları ve Application servisleri (veritabanı yok, hızlı). -->
+
+  <PropertyGroup>
+    <!-- xUnit v3 test projeleri kendi başına çalışan bir program olarak derlenir. -->
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit.runner.visualstudio">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Ddts.Domain\Ddts.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Ddts.Application\Ddts.Application.csproj" />
+  </ItemGroup>
+
+</Project>

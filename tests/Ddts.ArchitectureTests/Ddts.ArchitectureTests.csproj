@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Mimari testler (AT-01): katmanlar arası bağımlılık kuralını NetArchTest ile denetler. -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit.runner.visualstudio">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="NetArchTest.Rules" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Ddts.Domain\Ddts.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Ddts.Application\Ddts.Application.csproj" />
+    <ProjectReference Include="..\..\src\Ddts.Infrastructure\Ddts.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>
