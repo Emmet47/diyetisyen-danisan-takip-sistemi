@@ -1,0 +1,97 @@
+# -------------------------------------------------------------
+#  DDTS yerel geliştirme / demo ortamı (beş servis: api, web, postgres, seaweedfs, mailpit)
+#
+#  Önce (bir kez):      cp .env.example .env   ve boş değerleri doldurun
+#  Hepsini aç:          docker compose up --build
+#  Yalnızca altyapı:    docker compose up -d postgres seaweedfs mailpit
+#     (API'yi Visual Studio / Rider / "dotnet run" ile, web'i "npm run dev" ile çalıştırırken)
+#  Kapat:               docker compose down        (veriler kalır)
+#  Verileri de sil:     docker compose down -v
+# -------------------------------------------------------------
+name: ddts
+
+services:
+  # PostgreSQL 18 veritabanı
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ddts}
+      POSTGRES_USER: ${POSTGRES_USER:-ddts}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?.env dosyasinda POSTGRES_PASSWORD bos - once 'cp .env.example .env' yapip doldurun}
+    ports:
+      - "5432:5432"
+    volumes:
+      # PostgreSQL 18 imajında veri klasörü /var/lib/postgresql (eski sürümlerdeki .../data değil)
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # SeaweedFS: öğün fotoğrafları için S3 uyumlu nesne deposu.
+  # İmaj varsayılan olarak "weed mini" çalıştırır (tek konteynerde master + volume + filer + S3).
+  # Aşağıdaki kimlik bilgileriyle S3 yetkilendirmesi açılır, S3_BUCKET'taki kova kendiliğinden oluşur.
+  seaweedfs:
+    image: chrislusf/seaweedfs:4.51
+    environment:
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:-ddts-dev}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:?.env dosyasinda S3_SECRET_KEY bos}
+      S3_BUCKET: ${S3_BUCKET:-meal-photos}
+    ports:
+      - "8333:8333"   # S3 API
+    volumes:
+      - seaweedfs-data:/data
+    restart: unless-stopped
+
+  # Mailpit: parola sıfırlama e-postalarını yakalayan sahte SMTP sunucusu (gerçek e-posta gitmez).
+  # Gelen kutusu: http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:v1.33
+    ports:
+      - "8025:8025"   # web arayüzü
+      - "1025:1025"   # SMTP
+    restart: unless-stopped
+
+  # .NET 10 Web API
+  api:
+    build:
+      context: .
+      dockerfile: src/Ddts.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Default: Host=postgres;Port=5432;Database=${POSTGRES_DB:-ddts};Username=${POSTGRES_USER:-ddts};Password=${POSTGRES_PASSWORD}
+      Database__MigrateOnStartup: "true"
+      Storage__ServiceUrl: http://seaweedfs:8333
+      Storage__AccessKey: ${S3_ACCESS_KEY:-ddts-dev}
+      Storage__SecretKey: ${S3_SECRET_KEY}
+      Storage__Bucket: ${S3_BUCKET:-meal-photos}
+      Smtp__Host: mailpit
+      Smtp__Port: "1025"
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:?.env dosyasinda JWT_SIGNING_KEY bos}
+      Usda__ApiKey: ${USDA_API_KEY:-}
+    ports:
+      - "8080:8080"   # API deneme arayüzü (Scalar): http://localhost:8080/scalar
+    depends_on:
+      postgres:
+        condition: service_healthy
+      seaweedfs:
+        condition: service_started
+      mailpit:
+        condition: service_started
+    restart: unless-stopped
+
+  # React web paneli (nginx ile sunulur, /api isteklerini api servisine iletir)
+  web:
+    build:
+      context: ./web
+    ports:
+      - "3000:80"     # http://localhost:3000
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  seaweedfs-data:

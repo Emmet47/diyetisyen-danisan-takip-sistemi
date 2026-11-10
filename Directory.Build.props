@@ -1,0 +1,12 @@
+<Project>
+  <!--
+    Bu dosya src/ ve tests/ altındaki TÜM .NET projelerine otomatik uygulanır.
+    Hedef framework'ü değiştirmek gerekirse yalnızca burayı değiştirmek yeterli.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+</Project>

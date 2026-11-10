@@ -1,0 +1,116 @@
+erDiagram
+    users ||--o| dietitians : "hesap"
+    users ||--o| clients : "hesap"
+    dietitians ||--o{ working_hours : "çalışma saatleri"
+    dietitians ||--o{ clients : "danışanları"
+    dietitians ||--o{ subscriptions : "abonelikleri"
+    subscription_plans ||--o{ subscriptions : "paket"
+    clients ||--o{ measurements : "ölçümleri"
+    dietitians ||--o{ appointments : "randevuları"
+    clients ||--o{ appointments : "randevuları"
+    users ||--o{ notifications : "bildirimleri"
+    users |o--o{ audit_logs : "yaptığı işlemler"
+    users {
+        uuid id PK
+        varchar(254) email UK "küçük harf"
+        varchar(200) password_hash "NULL: davet bekliyor"
+        varchar(10) role "Admin | Dietitian | Client"
+        boolean is_active
+        varchar(100) reset_token_hash "hash'li"
+        timestamptz reset_token_expires_at
+        varchar(300) push_token "FCM"
+        timestamptz created_at
+    }
+    dietitians {
+        uuid id PK
+        uuid user_id FK,UK
+        varchar(100) full_name
+        varchar(20) phone
+        timestamptz created_at
+    }
+    working_hours {
+        uuid id PK
+        uuid dietitian_id FK
+        smallint weekday "1-7, UK(dietitian_id, weekday)"
+        time start_time
+        time end_time "start_time < end_time"
+    }
+    subscription_plans {
+        uuid id PK
+        varchar(50) name UK
+        int max_clients "> 0"
+        numeric(8,2) monthly_price
+        boolean is_active
+    }
+    subscriptions {
+        uuid id PK
+        uuid dietitian_id FK "tek Active (kısmi UK)"
+        uuid subscription_plan_id FK
+        varchar(10) status "Active | Expired | Cancelled"
+        date start_date
+        date end_date
+        timestamptz created_at
+    }
+    clients {
+        uuid id PK
+        uuid dietitian_id FK "tenant"
+        uuid user_id FK,UK
+        varchar(100) full_name
+        varchar(20) phone
+        date birth_date
+        varchar(6) sex "Female | Male"
+        varchar(10) goal_type "LoseWeight | Maintain | GainWeight"
+        numeric(5,1) target_weight_kg
+        varchar(500) preferences
+        varchar(500) allergy_notes
+        boolean is_active
+        timestamptz kvkk_consent_at "açık rıza"
+        boolean notify_appointments
+        boolean notify_meal_reminders
+        boolean notify_measurements
+        boolean notify_plans
+        timestamptz created_at
+    }
+    measurements {
+        uuid id PK
+        uuid client_id FK
+        date measured_on "UK(client_id, measured_on)"
+        numeric(5,1) weight_kg "20-350"
+        numeric(4,1) height_cm "100-250"
+        numeric(4,1) waist_cm "30-250"
+        numeric(4,1) hip_cm "isteğe bağlı"
+        numeric(4,1) body_fat_percent "isteğe bağlı"
+        varchar(300) note
+        timestamptz created_at
+    }
+    appointments {
+        uuid id PK
+        uuid dietitian_id FK
+        uuid client_id FK "(client_id, dietitian_id) bileşik FK"
+        timestamptz starts_at
+        timestamptz ends_at "EXCLUDE: aktif randevular kesişemez"
+        varchar(10) status "Requested | Confirmed | Cancelled | Completed"
+        varchar(300) note
+        timestamptz created_at
+    }
+    notifications {
+        uuid id PK
+        uuid user_id FK
+        varchar(30) type
+        varchar(100) title
+        varchar(300) body
+        boolean is_read
+        varchar(100) dedup_key UK
+        timestamptz created_at
+        timestamptz sent_at
+    }
+    audit_logs {
+        bigint id PK
+        uuid user_id FK "NULL olabilir"
+        varchar(50) action
+        varchar(50) entity_type
+        uuid entity_id
+        jsonb details "eski / yeni değerler"
+        varchar(45) ip_address
+        timestamptz created_at
+    }

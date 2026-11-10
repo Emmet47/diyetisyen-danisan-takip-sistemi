@@ -1,0 +1,18 @@
+# API imajı repo kökünden derlenir (context: .). Gereksiz dosyalar imaja girmesin, derleme hızlı olsun
+# ve yerel bin/obj klasörleri (özellikle Windows'ta oluşanlar) konteynerdeki derlemeyi bozmasın.
+**/bin/
+**/obj/
+**/.vs/
+**/.idea/
+**/.vscode/
+**/node_modules/
+**/*.user
+.git/
+.github/
+.env
+.env.*
+web/
+mobile/
+docs/
+tests/
+*.md

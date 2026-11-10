@@ -1,0 +1,105 @@
+classDiagram
+direction TB
+class INutritionComponent {
+  <<interface>>
+  +CalculateTotals() NutrientTotals
+}
+class IPrototype~T~ {
+  <<interface>>
+  +Clone() T
+}
+class AggregateRoot {
+  <<abstract>>
+}
+class NutritionPlan {
+  +Id: Guid
+  +Title: string
+  +PlanType: PlanType
+  +Status: PlanStatus
+  +TargetKcal: int [0..1]
+  +EnergyFormula: string [0..1]
+  +CreatedAt: DateTime
+  +PublishedAt: DateTime [0..1]
+  +ArchivedAt: DateTime [0..1]
+  +CreateDraft(client: Client, title: string, type: PlanType, sourceTemplateId: Guid [0..1])$ NutritionPlan
+  +AddMeal(meal: Meal) void
+  +Publish(now: DateTime) void
+  +Archive(now: DateTime) void
+  +CalculateTotals() NutrientTotals
+  +CalculateDayTotals(dayNo: int) NutrientTotals
+}
+class PlanTemplate {
+  +Id: Guid
+  +Name: string
+  +Description: string [0..1]
+  +PlanType: PlanType
+  +UpdatedAt: DateTime
+  +AddMeal(meal: Meal) void
+  +CreatePlanFor(client: Client, title: string) NutritionPlan
+  +CalculateTotals() NutrientTotals
+}
+class Meal {
+  +Id: Guid
+  +DayNo: int
+  +Name: string
+  +Time: TimeOnly
+  +AddItem(item: MealItem) void
+  +CalculateTotals() NutrientTotals
+  +Clone() Meal
+}
+class MealItem {
+  +Id: Guid
+  +PortionCount: decimal
+  +/IsAlternative: bool
+  +Grams() decimal
+  +CalculateTotals() NutrientTotals
+  +Clone() MealItem
+}
+class FoodItem {
+  +Id: Guid
+  +Name: string
+  +PortionName: string
+  +PortionGrams: decimal
+  +EnergyKcalPer100g: decimal
+  +ProteinPer100g: decimal
+  +CarbsPer100g: decimal
+  +FatPer100g: decimal
+  +SourceName: string
+  +ExternalId: string [0..1]
+  +SourceUpdatedAt: DateTime [0..1]
+  +NutrientsFor(grams: decimal) NutrientTotals
+}
+class MealLog {
+  +Id: Guid
+  +LogDate: DateOnly
+  +Status: MealLogStatus
+  +Note: string [0..1]
+  +Photo: PhotoInfo [0..1]
+  +LoggedAt: DateTime
+  +Update(status: MealLogStatus, note: string) void
+  +AttachPhoto(photo: PhotoInfo) void
+}
+class Client
+class Dietitian
+AggregateRoot <|-- NutritionPlan
+INutritionComponent <|.. NutritionPlan
+INutritionComponent <|.. PlanTemplate
+INutritionComponent <|.. Meal
+INutritionComponent <|.. MealItem
+IPrototype <|.. Meal : «bind» T→Meal
+IPrototype <|.. MealItem : «bind» T→MealItem
+NutritionPlan "0..1" *-- "1..*" Meal : öğünler
+PlanTemplate "0..1" *-- "1..*" Meal : öğünler
+Meal "1" *-- "1..*" MealItem : satırlar
+MealItem "0..*" --> "1" FoodItem : besin
+MealItem "0..*" --> "0..1" MealItem : alternatifi olduğu
+NutritionPlan "0..*" --> "1" Client
+NutritionPlan "0..*" --> "1" Dietitian
+NutritionPlan "0..*" --> "0..1" PlanTemplate : kaynak şablon
+PlanTemplate "0..*" --> "1" Dietitian : sahibi
+FoodItem "0..*" --> "0..1" Dietitian : sahibi (boşsa ortak)
+MealLog "0..*" --> "1" Meal : planlanan öğün
+MealLog "0..*" --> "1" Client
+PlanTemplate ..> NutritionPlan : «create»
+note for Meal "{xor} Bir öğün ya bir plana ya da bir şablona aittir"
+note for MealItem "Alternatif satırlar toplama katılmaz"

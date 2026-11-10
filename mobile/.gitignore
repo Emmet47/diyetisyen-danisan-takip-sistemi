@@ -1,0 +1,45 @@
+# Çeşitli
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# IntelliJ / Android Studio
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# Flutter / Dart / Pub
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+
+# Sembol / karartma dosyaları
+app.*.symbols
+app.*.map.json
+
+# Android derleme çıktıları
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# Firebase (FCM) yapılandırması ve imzalama anahtarları - repo herkese açık
+/android/app/google-services.json
+/ios/Runner/GoogleService-Info.plist
+/android/key.properties
+*.jks
+*.keystore

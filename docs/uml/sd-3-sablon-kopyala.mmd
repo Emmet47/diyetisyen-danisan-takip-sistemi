@@ -1,0 +1,34 @@
+sequenceDiagram
+autonumber
+actor D as Diyetisyen
+participant W as Web Paneli (React)
+participant API as :TemplatesController
+participant S as :TemplateService
+participant TR as :IPlanTemplateRepository
+participant CR as :IClientRepository
+participant T as :PlanTemplate
+participant M as :Meal
+participant PR as :INutritionPlanRepository
+participant UOW as :IUnitOfWork
+D->>W: Şablonu ve danışanı seçer, "Danışana kopyala"
+W->>API: POST /api/templates/{id}/copy-to-client {clientId, title}
+API->>S: CopyToClientAsync(templateId, clientId, title)
+S->>TR: GetAsync(dietitianId, templateId)
+TR-->>S: şablon (öğünler + satırlar)
+S->>CR: GetAsync(dietitianId, clientId)
+CR-->>S: client
+S->>T: CreatePlanFor(client, title)
+loop şablondaki her öğün
+  T->>M: Clone()
+  M-->>T: yeni Id'li öğün (satırlar ve alternatifler de kopyalanır)
+end
+T-->>S: yeni NutritionPlan (Draft, SourceTemplateId = şablon)
+S->>S: kopyadaki besinleri danışanın kısıtlarıyla karşılaştır (uyarı listesi)
+S->>PR: Add(plan)
+S->>UOW: SaveChangesAsync()
+S-->>API: planId + uyarılar
+API-->>W: 201 Created
+D->>W: Kopyada porsiyonu değiştirir, bir besini çıkarır
+W->>API: PUT /api/plans/{planId} (yalnızca Draft plan düzenlenebilir)
+API-->>W: 200 OK
+Note over T,PR: Değişiklik yalnızca yeni planın satırlarına yazılır.<br>Şablonun satırlarına dokunulmaz → özgün şablon aynı kalır (test: UT-07, IT-06)

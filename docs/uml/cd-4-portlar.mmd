@@ -1,0 +1,82 @@
+classDiagram
+direction LR
+class IPhotoStorage {
+  <<interface · port>>
+  +UploadAsync(key: string, content: Stream, contentType: string) void
+  +GetPresignedUrl(key: string, validFor: TimeSpan) string
+  +DeleteAsync(key: string) void
+}
+class S3PhotoStorageAdapter {
+  <<adapter · SeaweedFS>>
+  -bucket: string
+}
+class IPushNotificationSender {
+  <<interface · port>>
+  +SendAsync(pushToken: string, title: string, body: string) void
+}
+class FcmPushAdapter {
+  <<adapter · FCM>>
+}
+class IEmailSender {
+  <<interface · port>>
+  +SendInvitationAsync(to: string, link: string) void
+  +SendPasswordResetAsync(to: string, link: string) void
+}
+class SmtpEmailAdapter {
+  <<adapter · SMTP>>
+}
+class IPaymentGateway {
+  <<interface · port>>
+  +ChargeAsync(dietitianId: Guid, amount: decimal) PaymentResult
+}
+class FakePaymentAdapter {
+  <<adapter · simülasyon>>
+}
+class IReportPdfRenderer {
+  <<interface · port>>
+  +Render(report: ProgressReportDto) byte[0..*]
+}
+class QuestPdfReportRenderer {
+  <<adapter · QuestPDF>>
+}
+class IAuditLogger {
+  <<interface · port>>
+  +LogAsync(action: string, entityType: string, entityId: Guid [0..1], details: string [0..1]) void
+}
+class EfAuditLogger {
+  <<adapter · EF Core>>
+}
+class IPasswordHasher {
+  <<interface · port>>
+  +Hash(password: string) string
+  +Verify(hash: string, password: string) bool
+}
+class AspNetPasswordHasher {
+  <<adapter · PBKDF2>>
+}
+class ITokenService {
+  <<interface · port>>
+  +CreateToken(user: User) string
+}
+class JwtTokenService {
+  <<adapter · JWT>>
+}
+class ICurrentUser {
+  <<interface · port>>
+  +UserId: Guid
+  +Role: UserRole
+  +DietitianId: Guid [0..1]
+  +ClientId: Guid [0..1]
+}
+class HttpCurrentUser {
+  <<adapter · JWT claim'leri>>
+}
+IPhotoStorage <|.. S3PhotoStorageAdapter
+IPushNotificationSender <|.. FcmPushAdapter
+IEmailSender <|.. SmtpEmailAdapter
+IPaymentGateway <|.. FakePaymentAdapter
+IReportPdfRenderer <|.. QuestPdfReportRenderer
+IAuditLogger <|.. EfAuditLogger
+IPasswordHasher <|.. AspNetPasswordHasher
+ITokenService <|.. JwtTokenService
+ICurrentUser <|.. HttpCurrentUser

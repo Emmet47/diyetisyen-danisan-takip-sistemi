@@ -1,0 +1,50 @@
+sequenceDiagram
+autonumber
+actor C as Danışan
+participant APP as Mobil Uygulama (Flutter)
+participant API as :MeController / :AppointmentsController
+participant S as :AppointmentService
+participant AV as :AvailabilityService
+participant A as :Appointment
+participant UOW as :EfUnitOfWork
+participant DB@{ "type": "database", "alias": "PostgreSQL" }
+participant H as :AppointmentNotificationHandler
+participant NS as :NotificationService
+participant RS as :ReminderService
+participant J as :ReminderWorker
+actor D as Diyetisyen
+C->>APP: Randevu ekranında tarih seçer
+APP->>API: GET /api/me/available-slots?date=2026-12-01
+API->>S: GetFreeSlotsAsync(clientId, date)
+S->>AV: GetFreeSlots(çalışma saatleri, tarih, aktif randevular)
+AV-->>S: 30 dakikalık boş slotlar
+S-->>API: slot listesi
+API-->>APP: 200 OK [10:00, 10:30, 11:00 ...]
+C->>APP: 10:00'ı seçer
+APP->>API: POST /api/me/appointments {startsAt}
+API->>S: RequestAsync(clientId, startsAt)
+S->>A: Appointment.Request(...) → Status = Requested, Raise(AppointmentRequested)
+S->>UOW: SaveChangesAsync()
+UOW->>DB: INSERT appointments
+alt EXCLUDE kısıtı ihlali (aynı slot az önce alındı, SQLSTATE 23P01)
+  DB-->>UOW: exclusion_violation
+  S-->>API: SlotTakenException
+  API-->>APP: 409 Conflict "Bu saat az önce doldu"
+else kaydedildi
+  UOW->>H: AppointmentRequested (dispatcher üzerinden, commit'ten sonra)
+  H->>NS: diyetisyene uygulama içi bildirim
+  API-->>APP: 201 Created (Talep Edildi)
+end
+D->>API: POST /api/appointments/{id}/confirm (web paneli)
+API->>S: ConfirmAsync(dietitianId, id)
+S->>A: Confirm() → Status = Confirmed, Raise(AppointmentConfirmed)
+S->>UOW: SaveChangesAsync()
+UOW->>H: AppointmentConfirmed (dispatcher üzerinden)
+H->>NS: danışana "Randevun onaylandı" (izin açıksa push)
+API-->>D: 200 OK
+loop her 10 dakikada bir
+  J->>RS: SendDueRemindersAsync(now)
+  RS->>RS: 24 saat içinde başlayacak onaylı randevuları bul
+  RS->>NS: NotifyAsync(danışan, AppointmentReminder, ..., dedupKey = "appt:{id}:24h")
+  NS->>DB: INSERT notifications (dedup_key tekil → aynı hatırlatma ikinci kez oluşmaz)
+end

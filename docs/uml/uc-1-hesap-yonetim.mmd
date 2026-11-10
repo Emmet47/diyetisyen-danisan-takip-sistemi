@@ -1,0 +1,27 @@
+usecase-beta
+direction LR
+actor Diyetisyen("Diyetisyen")
+actor Danisan("Danışan")
+actor Yonetici("Platform Yöneticisi")
+actor Eposta("E-posta Servisi")
+systemBoundary DDTS["Hesap ve Yönetim"]
+  UC01("UC-01 Hesap Aç ve Paket Seç")
+  UC02("UC-02 Giriş Yap")
+  UC03("UC-03 Parolayı Sıfırla")
+  UC04("UC-04 Paketi Değiştir ve Öde (simülasyon)")
+  UC05("UC-05 Diyetisyen Hesaplarını Yönet")
+  UC06("UC-06 Abonelik Paketlerini Yönet")
+  UC07("UC-07 Kullanımı ve Denetim Kayıtlarını İzle")
+end
+Diyetisyen -- UC01
+Diyetisyen -- UC02
+Diyetisyen -- UC03
+Diyetisyen -- UC04
+Danisan -- UC02
+Danisan -- UC03
+UC02 -- Yonetici
+UC03 -- Yonetici
+UC05 -- Yonetici
+UC06 -- Yonetici
+UC07 -- Yonetici
+UC03 -- Eposta

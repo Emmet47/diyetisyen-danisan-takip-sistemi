@@ -1,0 +1,24 @@
+usecase-beta
+direction LR
+actor Danisan("Danışan")
+actor Zamanlayici("Zamanlayıcı")
+actor Bildirim("Bildirim Servisi (FCM)")
+systemBoundary DDTS["Danışan Mobil Uygulaması"]
+  UC25("UC-25 Planı ve Bugünkü Öğünleri Görüntüle")
+  UC26("UC-26 Öğün Kaydet")
+  UC27("UC-27 Öğün Fotoğrafı Ekle")
+  UC28("UC-28 Ölçüm Geçmişini Görüntüle")
+  UC29("UC-29 Randevu Talep Et")
+  UC30("UC-30 Randevuyu Ertele veya İptal Et")
+  UC31("UC-31 Bildirimleri ve İzinleri Yönet")
+  UC32("UC-32 Hatırlatma Gönder")
+end
+Danisan -- UC25
+Danisan -- UC26
+Danisan -- UC28
+Danisan -- UC29
+Danisan -- UC30
+Danisan -- UC31
+UC27 ..>:extend UC26
+Zamanlayici -- UC32
+UC32 -- Bildirim

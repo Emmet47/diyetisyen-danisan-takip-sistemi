@@ -1,0 +1,20 @@
+name: ddts_mobile
+description: "Diyetisyen Danışan Takip Sistemi - danışan mobil uygulaması"
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.8.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  dio: ^5.11.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

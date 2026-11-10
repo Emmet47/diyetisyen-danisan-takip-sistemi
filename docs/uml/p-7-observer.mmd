@@ -1,0 +1,81 @@
+classDiagram
+direction TB
+class AggregateRoot {
+  <<abstract · Subject>>
+  #Raise(e: IDomainEvent) void
+  +ClearEvents() void
+}
+class NutritionPlan {
+  +Publish(now: DateTime) void
+}
+class Appointment {
+  +Confirm() void
+  +Cancel(by: UserRole) void
+  +Reschedule(slot: TimeSlot, by: UserRole) void
+}
+class IDomainEvent {
+  <<interface>>
+  +OccurredAt: DateTime
+}
+class PlanPublished {
+  +PlanId: Guid
+  +DietitianId: Guid
+  +ClientId: Guid
+}
+class AppointmentEvent {
+  <<abstract>>
+  +AppointmentId: Guid
+  +DietitianId: Guid
+  +ClientId: Guid
+}
+class AppointmentRequested
+class AppointmentConfirmed
+class AppointmentCancelled
+class AppointmentRescheduled
+class IDomainEventHandler~TEvent~ {
+  <<interface · Observer>>
+  +HandleAsync(e: TEvent) void
+}
+class PlanPublishedHandler {
+  <<ConcreteObserver>>
+  +HandleAsync(e: PlanPublished) void
+}
+class AppointmentNotificationHandler {
+  <<ConcreteObserver>>
+  +HandleAsync(e: AppointmentEvent) void
+}
+class DomainEventDispatcher {
+  +DispatchAsync(events: IDomainEvent[0..*]) void
+}
+class EfUnitOfWork {
+  +SaveChangesAsync() int
+}
+class NotificationService {
+  +NotifyAsync(userId: Guid, type: NotificationType, title: string, body: string, dedupKey: string [0..1]) void
+}
+class IPushNotificationSender {
+  <<interface · port>>
+  +SendAsync(pushToken: string, title: string, body: string) void
+}
+class FcmPushAdapter {
+  <<adapter>>
+  +SendAsync(pushToken: string, title: string, body: string) void
+}
+AggregateRoot <|-- NutritionPlan
+AggregateRoot <|-- Appointment
+AggregateRoot "1" *-- "0..*" IDomainEvent : bekleyen olaylar
+IDomainEvent <|.. PlanPublished
+IDomainEvent <|.. AppointmentEvent
+AppointmentEvent <|-- AppointmentRequested
+AppointmentEvent <|-- AppointmentConfirmed
+AppointmentEvent <|-- AppointmentCancelled
+AppointmentEvent <|-- AppointmentRescheduled
+IDomainEventHandler <|.. PlanPublishedHandler : «bind» TEvent→PlanPublished
+IDomainEventHandler <|.. AppointmentNotificationHandler : «bind» TEvent→AppointmentEvent
+EfUnitOfWork --> DomainEventDispatcher : kayıttan (commit) sonra
+DomainEventDispatcher "1" --> "0..*" IDomainEventHandler : aboneler (DI)
+PlanPublishedHandler --> NotificationService
+AppointmentNotificationHandler --> NotificationService
+NotificationService --> IPushNotificationSender
+IPushNotificationSender <|.. FcmPushAdapter
+note for NotificationService "Danışanın bildirim iznini kontrol eder,<br>notifications tablosuna yazar, push token varsa FCM'e yollar"

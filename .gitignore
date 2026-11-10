@@ -1,0 +1,47 @@
+# =============================================================
+#  Kök .gitignore
+#  web/ ve mobile/ klasörlerinin kendi .gitignore dosyaları da var.
+# =============================================================
+
+# ---- Gizli bilgiler / ortam değişkenleri ----
+# .env asla gönderilmez; yalnızca şablonu (.env.example) repoda durur.
+.env
+.env.*
+!.env.example
+*.pfx
+*.pem
+*.key
+# Firebase (FCM) sunucu anahtarı - repo herkese açık, kesinlikle gönderilmemeli
+firebase-adminsdk*.json
+*service-account*.json
+
+# ---- .NET (src/ ve tests/) ----
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
+*.rsuser
+*.userprefs
+TestResults/
+*.trx
+coverage/
+*.coverage
+*.coveragexml
+
+# ---- IDE / editör ----
+.vs/
+.idea/
+*.DotSettings.user
+.vscode/*
+!.vscode/extensions.json
+*.swp
+*~
+
+# ---- İşletim sistemi ----
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- Loglar ----
+*.log
+logs/

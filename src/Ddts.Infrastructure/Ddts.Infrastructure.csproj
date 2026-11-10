@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Altyapı (sürülen / driven adapter'lar): EF Core + PostgreSQL, repository'ler, migration'lar,
+    USDA adapter'ı, SeaweedFS (S3), FCM, SMTP, QuestPDF, sahte ödeme (FakePaymentAdapter).
+    Application'daki port arayüzlerini uygular.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\Ddts.Application\Ddts.Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="EFCore.NamingConventions" />
+  </ItemGroup>
+
+</Project>

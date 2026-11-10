@@ -1,0 +1,139 @@
+classDiagram
+direction TB
+class User {
+  +Id: Guid
+  +Email: string
+  -PasswordHash: string [0..1]
+  +Role: UserRole
+  +IsActive: bool
+  -ResetTokenHash: string [0..1]
+  -ResetTokenExpiresAt: DateTime [0..1]
+  +PushToken: string [0..1]
+  +SetPassword(hash: string) void
+  +StartPasswordReset(tokenHash: string, expiresAt: DateTime) void
+  +IsResetTokenValid(tokenHash: string, now: DateTime) bool
+  +Deactivate() void
+}
+class Dietitian {
+  +Id: Guid
+  +FullName: string
+  +Phone: string [0..1]
+  +SetWorkingHours(hours: WorkingHour[0..#42;]) void
+}
+class WorkingHour {
+  +Weekday: int
+  +StartTime: TimeOnly
+  +EndTime: TimeOnly
+}
+class Client {
+  +Id: Guid
+  +FullName: string
+  +Phone: string [0..1]
+  +BirthDate: DateOnly
+  +Sex: Sex
+  +GoalType: GoalType
+  +TargetWeightKg: decimal [0..1]
+  +Preferences: string [0..1]
+  +AllergyNotes: string [0..1]
+  +IsActive: bool
+  +KvkkConsentAt: DateTime
+  +Notifications: NotificationSettings
+  +UpdateProfile(changes: ClientProfile) void
+  +Deactivate() void
+  +AgeOn(date: DateOnly) int
+  +GetRestriction(foodItemId: Guid) RestrictionType [0..1]
+  +AllowsNotification(type: NotificationType) bool
+}
+class FoodRestriction {
+  +Type: RestrictionType
+}
+class FoodItem {
+  +Id: Guid
+  +Name: string
+}
+class Measurement {
+  +Id: Guid
+  +MeasuredOn: DateOnly
+  +WeightKg: decimal
+  +HeightCm: decimal
+  +WaistCm: decimal
+  +HipCm: decimal [0..1]
+  +BodyFatPercent: decimal [0..1]
+  +Note: string [0..1]
+}
+class AggregateRoot {
+  <<abstract>>
+}
+class Appointment {
+  +Id: Guid
+  +StartsAt: DateTime
+  +EndsAt: DateTime
+  +Status: AppointmentStatus
+  +Note: string [0..1]
+  +Request(dietitian: Dietitian, client: Client, slot: TimeSlot)$ Appointment
+  +CreateConfirmed(dietitian: Dietitian, client: Client, slot: TimeSlot)$ Appointment
+  +Confirm() void
+  +Cancel(by: UserRole) void
+  +Reschedule(slot: TimeSlot, by: UserRole) void
+  +Complete(now: DateTime) void
+}
+class AvailabilityService {
+  <<domain service>>
+  +GetFreeSlots(hours: WorkingHour[0..#42;], date: DateOnly, booked: Appointment[0..#42;]) TimeSlot[0..#42;]
+}
+class SubscriptionPlan {
+  +Id: Guid
+  +Name: string
+  +MaxClients: int
+  +MonthlyPrice: decimal
+  +IsActive: bool
+}
+class Subscription {
+  +Id: Guid
+  +Status: SubscriptionStatus
+  +StartDate: DateOnly
+  +EndDate: DateOnly
+  +IsActiveOn(today: DateOnly) bool
+  +EnsureCanAddClient(activeClients: int) void
+  +IsNearLimit(activeClients: int) bool
+  +Renew() void
+  +Cancel() void
+  +Expire() void
+}
+class Notification {
+  +Id: Guid
+  +Type: NotificationType
+  +Title: string
+  +Body: string
+  +IsRead: bool
+  +DedupKey: string [0..1]
+  +CreatedAt: DateTime
+  +SentAt: DateTime [0..1]
+  +MarkRead() void
+  +MarkSent(at: DateTime) void
+}
+class AuditLog {
+  +Id: long
+  +Action: string
+  +EntityType: string
+  +EntityId: Guid [0..1]
+  +Details: string [0..1]
+  +IpAddress: string [0..1]
+  +CreatedAt: DateTime
+}
+Dietitian "0..1" --> "1" User : hesap
+Client "0..1" --> "1" User : hesap
+Dietitian "1" *-- "0..7" WorkingHour
+Client "0..*" --> "1" Dietitian : bağlı olduğu
+Client "1" *-- "0..*" FoodRestriction : kısıtlar
+FoodRestriction "0..*" --> "1" FoodItem
+Measurement "0..*" --> "1" Client
+AggregateRoot <|-- Appointment
+Appointment "0..*" --> "1" Dietitian
+Appointment "0..*" --> "1" Client
+AvailabilityService ..> WorkingHour
+AvailabilityService ..> Appointment
+Subscription "0..*" --> "1" Dietitian
+Subscription "0..*" --> "1" SubscriptionPlan : paket
+Notification "0..*" --> "1" User : alıcı
+AuditLog "0..*" --> "0..1" User : işlemi yapan

@@ -1,0 +1,107 @@
+# CI hattı: her pull request'te ve main'e her push'ta dört iş çalışır.
+# main dalı kuralında bu dört iş "zorunlu" seçilir; biri kırmızıysa PR birleştirilemez.
+name: CI
+
+on:
+  push:
+    branches: [main,dev]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  # .NET: derleme + birim, mimari (AT-01) ve entegrasyon testleri.
+  # Entegrasyon testleri Testcontainers ile geçici bir PostgreSQL konteyneri açar (GitHub sunucusunda Docker hazır).
+  backend:
+    name: Backend (.NET)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Paketleri indir
+        run: dotnet restore Ddts.sln
+
+      - name: Derle
+        run: dotnet build Ddts.sln --no-restore -c Release
+
+      - name: Testler
+        run: dotnet test --solution Ddts.sln --no-build -c Release --report-xunit-trx --results-directory ${{ github.workspace }}/TestResults
+
+      - name: Test raporunu sakla
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-sonuclari
+          path: TestResults/*.trx
+
+  # React: lint + TypeScript kontrolü + üretim derlemesi.
+  web:
+    name: Web (React)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+
+  # Flutter: kod denetimi + widget testleri (android/ ve ios/ klasörleri olmadan da çalışır).
+  mobile:
+    name: Mobil (Flutter)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+
+  # Duman testi (smoke test): tüm sistemi docker compose ile açıp tarayıcının izlediği yolu dener:
+  # web (nginx) → /api/health → .NET API.
+  docker:
+    name: Docker Compose
+    runs-on: ubuntu-latest
+    needs: [backend, web]
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Test için .env oluştur (rastgele parolalarla)
+        run: |
+          cp .env.example .env
+          sed -i "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=$(openssl rand -hex 16)|" .env
+          sed -i "s|^S3_SECRET_KEY=.*|S3_SECRET_KEY=$(openssl rand -hex 16)|" .env
+          sed -i "s|^JWT_SIGNING_KEY=.*|JWT_SIGNING_KEY=$(openssl rand -hex 32)|" .env
+
+      - name: Sistemi derle ve aç
+        run: docker compose up -d --build --wait --wait-timeout 300
+
+      - name: Web → API zinciri çalışıyor mu?
+        run: curl --fail --silent --show-error --retry 10 --retry-delay 3 --retry-all-errors http://localhost:3000/api/health
+
+      - name: Hata olursa konteyner loglarını göster
+        if: failure()
+        run: docker compose logs
+
+      - name: Kapat
+        if: always()
+        run: docker compose down -v

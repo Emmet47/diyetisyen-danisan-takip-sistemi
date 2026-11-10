@@ -1,0 +1,31 @@
+sequenceDiagram
+autonumber
+actor D as Diyetisyen
+participant W as Web Paneli (React)
+participant API as :ClientsController
+participant S as :ClientService
+participant SR as :ISubscriptionRepository
+participant CR as :IClientRepository
+participant UOW as :IUnitOfWork
+participant DB@{ "type": "database", "alias": "PostgreSQL" }
+participant M as :IEmailSender
+D->>W: Danışan formunu doldurur, "açık rıza alındı" kutusunu işaretler
+W->>API: POST /api/clients (Authorization: Bearer JWT)
+API->>S: AddClientAsync(cmd) — dietitianId JWT'den alınır
+S->>SR: GetActiveForUpdateAsync(dietitianId)
+SR->>DB: SELECT aktif abonelik ... FOR UPDATE
+SR-->>S: abonelik (ör. Başlangıç paketi, en fazla 10 danışan)
+S->>CR: CountActiveAsync(dietitianId)
+CR-->>S: aktif danışan sayısı
+alt abonelik aktif değil ya da limit dolu
+  S-->>API: SubscriptionLimitException
+  API-->>W: 409 Conflict "Paket limitin doldu, paketini yükseltmelisin"
+else limit uygun
+  S->>S: new User(rol = Client) + new Client(kvkkConsentAt = şimdi)
+  S->>CR: Add(client)
+  S->>UOW: SaveChangesAsync()
+  UOW->>DB: INSERT users, clients, audit_logs (tek işlem)
+  S->>M: SendInvitationAsync(e-posta, parola belirleme bağlantısı)
+  S-->>API: clientId (+ limitin %80'i dolduysa uyarı)
+  API-->>W: 201 Created
+end

@@ -1,0 +1,35 @@
+classDiagram
+direction TB
+class PlanService {
+  <<Director>>
+  +CreatePlanAsync(cmd: CreatePlanCommand) Guid
+}
+class NutritionPlanBuilder {
+  <<Builder>>
+  -errors: string[0..*]
+  -warnings: string[0..*]
+  +ForClient(client: Client) NutritionPlanBuilder
+  +WithTitle(title: string) NutritionPlanBuilder
+  +WithType(type: PlanType) NutritionPlanBuilder
+  +WithEnergyTarget(kcal: int, formula: string) NutritionPlanBuilder
+  +AddMeal(dayNo: int, name: string, time: TimeOnly) NutritionPlanBuilder
+  +AddFood(food: FoodItem, portions: decimal) NutritionPlanBuilder
+  +AddAlternative(food: FoodItem, portions: decimal) NutritionPlanBuilder
+  +Warnings() string[0..*]
+  +Build() NutritionPlan
+}
+class Client {
+  +GoalType: GoalType
+  +Preferences: string [0..1]
+  +GetRestriction(foodItemId: Guid) RestrictionType [0..1]
+}
+class NutritionPlan {
+  <<Product>>
+  +Status: PlanStatus
+}
+class FoodItem
+PlanService --> NutritionPlanBuilder : adımları sırayla çağırır
+NutritionPlanBuilder "0..*" --> "1" Client : hedef, tercih ve kısıtlar
+NutritionPlanBuilder ..> FoodItem : kısıt kontrolü
+NutritionPlanBuilder ..> NutritionPlan : «create»
+note for NutritionPlanBuilder "AddFood: Allergy kısıtı → hata listesine, Dislike (sevmiyor) → uyarı listesine<br>AddMeal: günlük planda dayNo = 1, haftalıkta 1–7<br>Build(): hata varsa DomainException (tüm hatalar birlikte);<br>yoksa plan Taslak (Draft) olarak döner<br>Zorunlu: danışan, başlık, en az 1 öğün, her öğünde en az 1 besin"

@@ -1,0 +1,47 @@
+digraph G {
+ graph [rankdir=TB, nodesep=0.4, ranksep=0.55, fontname="DejaVu Sans", compound=true];
+ node [shape=plaintext, fontname="DejaVu Sans", fontsize=11];
+ edge [fontname="DejaVu Sans", fontsize=9, color="#555555"];
+ ClientService [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="6" COLOR="#999999"><TR><TD BGCOLOR="#eeeeee"><FONT POINT-SIZE="10">«Application servisi»</FONT><BR/><B>ClientService</B></TD></TR><TR><TD BGCOLOR="#f7f7f7" ALIGN="LEFT" BALIGN="LEFT"> </TD></TR><TR><TD BGCOLOR="#f7f7f7" ALIGN="LEFT" BALIGN="LEFT">+AddClientAsync(cmd: AddClientCommand): Guid<BR ALIGN="LEFT"/>+UpdateClientAsync(clientId: Guid, profile: ClientProfile): void<BR ALIGN="LEFT"/></TD></TR></TABLE>>];
+ IClientRepository [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="6" COLOR="#999999"><TR><TD BGCOLOR="#eeeeee"><FONT POINT-SIZE="10">«interface · Repository»</FONT><BR/><B>IClientRepository</B></TD></TR><TR><TD BGCOLOR="#f7f7f7" ALIGN="LEFT" BALIGN="LEFT"> </TD></TR><TR><TD BGCOLOR="#f7f7f7" ALIGN="LEFT" BALIGN="LEFT">+GetAsync(dietitianId: Guid, clientId: Guid): Client [0..1]<BR ALIGN="LEFT"/>+ListAsync(dietitianId: Guid, onlyActive: bool): Client[0..&#42;]<BR ALIGN="LEFT"/>+CountActiveAsync(dietitianId: Guid): int<BR ALIGN="LEFT"/>+Add(client: Client): void<BR ALIGN="LEFT"/>+Remove(client: Client): void<BR ALIGN="LEFT"/></TD></TR></TABLE>>];
+ ISubscriptionRepository [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="6" COLOR="#999999"><TR><TD BGCOLOR="#eeeeee"><FONT POINT-SIZE="10">«interface · Repository»</FONT><BR/><B>ISubscriptionRepository</B></TD></TR><TR><TD BGCOLOR="#f7f7f7" ALIGN="LEFT" BALIGN="LEFT"> </TD></TR><TR><TD BGCOLOR="#f7f7f7" ALIGN="LEFT" BALIGN="LEFT">+GetActiveForUpdateAsync(dietitianId: Guid): Subscription [0..1]<BR ALIGN="LEFT"/></TD></TR></TABLE>>];
+ IUnitOfWork [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="6" COLOR="#999999"><TR><TD BGCOLOR="#eeeeee"><FONT POINT-SIZE="10">«interface»</FONT><BR/><B>IUnitOfWork</B></TD></TR><TR><TD BGCOLOR="#f7f7f7" ALIGN="LEFT" BALIGN="LEFT"> </TD></TR><TR><TD BGCOLOR="#f7f7f7" ALIGN="LEFT" BALIGN="LEFT">+SaveChangesAsync(): int<BR ALIGN="LEFT"/>+ExecuteInTransactionAsync(work: Func&lt;Task&gt;): void<BR ALIGN="LEFT"/></TD></TR></TABLE>>];
+ EfClientRepository [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="6" COLOR="#999999"><TR><TD BGCOLOR="#eeeeee"><B>EfClientRepository</B></TD></TR><TR><TD BGCOLOR="#f7f7f7" ALIGN="LEFT" BALIGN="LEFT"> </TD></TR><TR><TD BGCOLOR="#f7f7f7" ALIGN="LEFT" BALIGN="LEFT">+GetAsync(dietitianId: Guid, clientId: Guid): Client [0..1]<BR ALIGN="LEFT"/>+CountActiveAsync(dietitianId: Guid): int<BR ALIGN="LEFT"/>…<BR ALIGN="LEFT"/></TD></TR></TABLE>>];
+ EfSubscriptionRepository [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="6" COLOR="#999999"><TR><TD BGCOLOR="#eeeeee"><B>EfSubscriptionRepository</B></TD></TR><TR><TD BGCOLOR="#f7f7f7" ALIGN="LEFT" BALIGN="LEFT"> </TD></TR><TR><TD BGCOLOR="#f7f7f7" ALIGN="LEFT" BALIGN="LEFT">+GetActiveForUpdateAsync(dietitianId: Guid): Subscription [0..1]<BR ALIGN="LEFT"/></TD></TR></TABLE>>];
+ EfUnitOfWork [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="6" COLOR="#999999"><TR><TD BGCOLOR="#eeeeee"><B>EfUnitOfWork</B></TD></TR><TR><TD BGCOLOR="#f7f7f7" ALIGN="LEFT" BALIGN="LEFT"> </TD></TR><TR><TD BGCOLOR="#f7f7f7" ALIGN="LEFT" BALIGN="LEFT">+SaveChangesAsync(): int<BR ALIGN="LEFT"/>+ExecuteInTransactionAsync(work: Func&lt;Task&gt;): void<BR ALIGN="LEFT"/></TD></TR></TABLE>>];
+ DdtsDbContext [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="6" COLOR="#999999"><TR><TD BGCOLOR="#eeeeee"><FONT POINT-SIZE="10">«EF Core DbContext»</FONT><BR/><B>DdtsDbContext</B></TD></TR><TR><TD BGCOLOR="#f7f7f7" ALIGN="LEFT" BALIGN="LEFT"> </TD></TR><TR><TD BGCOLOR="#f7f7f7" ALIGN="LEFT" BALIGN="LEFT"> </TD></TR></TABLE>>];
+ { rank=same; IClientRepository; ISubscriptionRepository; IUnitOfWork; }
+ { rank=same; EfClientRepository; EfSubscriptionRepository; EfUnitOfWork; }
+ subgraph cluster_other {
+  label="Diğer repository arayüzleri (EF Core uygulamaları aynı kalıpta: EfNutritionPlanRepository, EfPlanTemplateRepository, …)";
+  labeljust=l; style="rounded,dashed"; color="#888888"; fontsize=10; fontname="DejaVu Sans";
+  INutritionPlanRepository [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="6" COLOR="#999999"><TR><TD BGCOLOR="#eeeeee"><FONT POINT-SIZE="10">«interface · Repository»</FONT><BR/><B>INutritionPlanRepository</B></TD></TR><TR><TD BGCOLOR="#f7f7f7" ALIGN="LEFT" BALIGN="LEFT"> </TD></TR><TR><TD BGCOLOR="#f7f7f7" ALIGN="LEFT" BALIGN="LEFT">+GetAsync(dietitianId: Guid, planId: Guid): NutritionPlan [0..1]<BR ALIGN="LEFT"/>+GetPublishedForClientAsync(clientId: Guid): NutritionPlan [0..1]<BR ALIGN="LEFT"/>+Add(plan: NutritionPlan): void<BR ALIGN="LEFT"/></TD></TR></TABLE>>];
+  IPlanTemplateRepository [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="6" COLOR="#999999"><TR><TD BGCOLOR="#eeeeee"><FONT POINT-SIZE="10">«interface · Repository»</FONT><BR/><B>IPlanTemplateRepository</B></TD></TR><TR><TD BGCOLOR="#f7f7f7" ALIGN="LEFT" BALIGN="LEFT"> </TD></TR><TR><TD BGCOLOR="#f7f7f7" ALIGN="LEFT" BALIGN="LEFT">+GetAsync(dietitianId: Guid, templateId: Guid): PlanTemplate [0..1]<BR ALIGN="LEFT"/>+Add(template: PlanTemplate): void<BR ALIGN="LEFT"/></TD></TR></TABLE>>];
+  IFoodItemRepository [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="6" COLOR="#999999"><TR><TD BGCOLOR="#eeeeee"><FONT POINT-SIZE="10">«interface · Repository»</FONT><BR/><B>IFoodItemRepository</B></TD></TR><TR><TD BGCOLOR="#f7f7f7" ALIGN="LEFT" BALIGN="LEFT"> </TD></TR><TR><TD BGCOLOR="#f7f7f7" ALIGN="LEFT" BALIGN="LEFT">+GetManyAsync(dietitianId: Guid, ids: Guid[0..&#42;]): FoodItem[0..&#42;]<BR ALIGN="LEFT"/>+Add(food: FoodItem): void<BR ALIGN="LEFT"/></TD></TR></TABLE>>];
+  { rank=same; INutritionPlanRepository; IPlanTemplateRepository; IFoodItemRepository; }
+  INutritionPlanRepository -> IPlanTemplateRepository -> IFoodItemRepository [style=invis];
+  IMeasurementRepository [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="6" COLOR="#999999"><TR><TD BGCOLOR="#eeeeee"><FONT POINT-SIZE="10">«interface · Repository»</FONT><BR/><B>IMeasurementRepository</B></TD></TR><TR><TD BGCOLOR="#f7f7f7" ALIGN="LEFT" BALIGN="LEFT"> </TD></TR><TR><TD BGCOLOR="#f7f7f7" ALIGN="LEFT" BALIGN="LEFT">+ListAsync(clientId: Guid, from: DateOnly, to: DateOnly): Measurement[0..&#42;]<BR ALIGN="LEFT"/>+Add(measurement: Measurement): void<BR ALIGN="LEFT"/></TD></TR></TABLE>>];
+  IMealLogRepository [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="6" COLOR="#999999"><TR><TD BGCOLOR="#eeeeee"><FONT POINT-SIZE="10">«interface · Repository»</FONT><BR/><B>IMealLogRepository</B></TD></TR><TR><TD BGCOLOR="#f7f7f7" ALIGN="LEFT" BALIGN="LEFT"> </TD></TR><TR><TD BGCOLOR="#f7f7f7" ALIGN="LEFT" BALIGN="LEFT">+ListAsync(clientId: Guid, from: DateOnly, to: DateOnly): MealLog[0..&#42;]<BR ALIGN="LEFT"/>+Add(log: MealLog): void<BR ALIGN="LEFT"/></TD></TR></TABLE>>];
+  IAppointmentRepository [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="6" COLOR="#999999"><TR><TD BGCOLOR="#eeeeee"><FONT POINT-SIZE="10">«interface · Repository»</FONT><BR/><B>IAppointmentRepository</B></TD></TR><TR><TD BGCOLOR="#f7f7f7" ALIGN="LEFT" BALIGN="LEFT"> </TD></TR><TR><TD BGCOLOR="#f7f7f7" ALIGN="LEFT" BALIGN="LEFT">+GetAsync(dietitianId: Guid, appointmentId: Guid): Appointment [0..1]<BR ALIGN="LEFT"/>+ListActiveAsync(dietitianId: Guid, date: DateOnly): Appointment[0..&#42;]<BR ALIGN="LEFT"/>+Add(appointment: Appointment): void<BR ALIGN="LEFT"/></TD></TR></TABLE>>];
+  { rank=same; IMeasurementRepository; IMealLogRepository; IAppointmentRepository; }
+  IMeasurementRepository -> IMealLogRepository -> IAppointmentRepository [style=invis];
+  INutritionPlanRepository -> IMeasurementRepository [style=invis];
+  IPlanTemplateRepository -> IMealLogRepository [style=invis];
+  IFoodItemRepository -> IAppointmentRepository [style=invis];
+ }
+ n1 [shape=note, style=filled, fillcolor="#fff8dc", color="#999999", fontsize=10, label="Arayüzler Application katmanında (port).\nDiyetisyen verisi okuyan her metot dietitianId alır:\nbaşka diyetisyenin kaydı hiç dönmez (IDOR koruması)."];
+ n2 [shape=note, style=filled, fillcolor="#fff8dc", color="#999999", fontsize=10, label="SELECT … FOR UPDATE: aynı anda iki danışan\neklenirken limit aşılmasın diye satır kilitlenir."];
+ n1 -> IClientRepository [style=dashed, arrowhead=none, color="#999999"];
+ n2 -> EfSubscriptionRepository [style=dashed, arrowhead=none, color="#999999"];
+ { rank=same; ClientService; n1; n2; }
+ ClientService -> IClientRepository [arrowhead=vee];
+ ClientService -> ISubscriptionRepository [arrowhead=vee];
+ ClientService -> IUnitOfWork [arrowhead=vee];
+ IClientRepository -> EfClientRepository [style=dashed, dir=back, arrowtail=onormal, arrowsize=1.2];
+ ISubscriptionRepository -> EfSubscriptionRepository [style=dashed, dir=back, arrowtail=onormal, arrowsize=1.2];
+ IUnitOfWork -> EfUnitOfWork [style=dashed, dir=back, arrowtail=onormal, arrowsize=1.2];
+ EfClientRepository -> DdtsDbContext [arrowhead=vee];
+ EfSubscriptionRepository -> DdtsDbContext [arrowhead=vee];
+ EfUnitOfWork -> DdtsDbContext [arrowhead=vee];
+ ClientService -> INutritionPlanRepository [style=invis];
+}
