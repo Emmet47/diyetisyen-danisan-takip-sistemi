@@ -1,1 +1,1 @@
-# diyetisyen-dan-san-takip-sistemi
+# diyetisyen-danisan-takip-sistemi
