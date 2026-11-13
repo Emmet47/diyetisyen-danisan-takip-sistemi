@@ -11,8 +11,17 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- PasswordHasher (PBKDF2) ve IHttpContextAccessor ASP.NET Core'un içinde geliyor -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="EFCore.NamingConventions" />
+    <!-- JwtTokenService token üretmek için Microsoft.IdentityModel paketlerini buradan alır -->
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <!-- SmtpEmailAdapter: e-posta gönderme -->
+    <PackageReference Include="MailKit" />
   </ItemGroup>
 
 </Project>
