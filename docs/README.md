@@ -23,8 +23,10 @@ Klasörler gereksinim belgesinin "10.2 Teknik çıktılar tablosu"ndaki "Repodak
 
 - Sınıf, arayüz ve metot adları `uml/cd-*`, `uml/p-*` diyagramlarındakiyle **aynı** olmalı (ör. `DdtsDbContext`, `AggregateRoot`, `IUnitOfWork.ExecuteInTransactionAsync`).
 - Bir use case'in akışı ilgili sıra diyagramına (`uml/sd-*`) uymalı; farklı yapmak gerekirse önce diyagramı güncelleyin.
-- Tablolar EF Core migration'larıyla üretilir; her migration'dan sonra kısıtlar `db/schema.sql` ile karşılaştırılır.
-  EXCLUDE kısıtı (çift randevu engeli) EF Core modelinden üretilemez; migration'a `migrationBuilder.Sql(...)` ile elle eklenir.
+- Tablolar EF Core migration'larıyla üretilir; migration şemasının `db/schema.sql` ile aynı olduğunu
+  `SemaUyumuTests` entegrasyon testi her CI çalışmasında karşılaştırır.
+  EXCLUDE kısıtı (çift randevu engeli) ve fotoğraf anahtarının tekil indeksi EF Core modelinden üretilemez;
+  ikisi `ManualSqlConstraints` sınıfıyla (`migrationBuilder.Sql(...)`) migration'a eklenir.
 - Demo verileri sahtedir (ör. "Dyt. Ayşe Örnek", `@ornek.test` e-postaları); gerçek kişi ya da sağlık bilgisi kullanılmaz.
 
 ## Diyagramları yeniden çizmek
