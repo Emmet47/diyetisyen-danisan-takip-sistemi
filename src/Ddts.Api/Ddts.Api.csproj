@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
     <PackageReference Include="Scalar.AspNetCore" />
     <!-- Yalnızca "dotnet ef migrations ..." komutları için gerekli, yayına girmez. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
