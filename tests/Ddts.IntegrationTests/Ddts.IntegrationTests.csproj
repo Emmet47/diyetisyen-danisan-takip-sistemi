@@ -30,4 +30,9 @@
     <ProjectReference Include="..\..\src\Ddts.Api\Ddts.Api.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- SemaUyumuTests: migration şeması tasarımdaki referans şemayla karşılaştırılır -->
+    <None Include="..\..\docs\db\schema.sql" Link="schema.sql" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

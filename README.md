@@ -108,8 +108,12 @@ dotnet ef migrations add IlkSema --project src/Ddts.Infrastructure --startup-pro
 ```
 
 - Development ortamında API açılırken bekleyen migration'lar kendiliğinden uygulanır (`Database:MigrateOnStartup`).
+- `dotnet ef` komutları veritabanına bağlanmadan çalışır (`DdtsDbContextFactory`); user-secrets ayarlı olmasa da migration üretilir.
 - Tablo ve sütun adları otomatik snake_case olur (EFCore.NamingConventions).
-- Veritabanının asıl kaynağı migration'lardır; `docs/db/schema.sql` tasarım belgesidir. Migration yazınca kısıtların (FK, CHECK, UNIQUE, EXCLUDE) onunla aynı olduğunu kontrol edin.
+- Veritabanının asıl kaynağı migration'lardır; `docs/db/schema.sql` tasarım belgesidir. İkisinin aynı olduğunu
+  `tests/Ddts.IntegrationTests/Veritabani/SemaUyumuTests` denetler (tablo, sütun, CHECK, FK, EXCLUDE, indeks); fark varsa test hangi satırın farklı olduğunu yazar.
+- EF Core modelinden üretilemeyen iki kısıt (randevu çakışması EXCLUDE'u ve fotoğraf anahtarı tekil indeksi) `Persistence/Migrations/ManualSqlConstraints.cs` içinde.
+  İlk migration'da (IlkSema) `Up()` metodunun **sonuna** `ManualSqlConstraints.Create(migrationBuilder);`, `Down()` metodunun **başına** `ManualSqlConstraints.Drop(migrationBuilder);` eklenir.
 - Aynı anda yalnızca bir kişi migration ekler (paralel iki migration birleşirken çakışır).
 
 ### Testler
