@@ -30,8 +30,12 @@ class AppointmentEvent {
 }
 class AppointmentRequested
 class AppointmentConfirmed
-class AppointmentCancelled
-class AppointmentRescheduled
+class AppointmentCancelled {
+  +By: UserRole
+}
+class AppointmentRescheduled {
+  +By: UserRole
+}
 class IDomainEventHandler~TEvent~ {
   <<interface · Observer>>
   +HandleAsync(e: TEvent) void
