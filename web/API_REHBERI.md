@@ -48,11 +48,14 @@ Backend'de yeni uç nokta eklendiyse: `git pull` yapıp 3. adımdaki komutu tekr
 2. Gövde gerekiyorsa örnek JSON'u düzenle, **Send** ile gönder.
 3. Altta durum kodunu ve dönen JSON'u görürsün. Kod yazmadan önce hep böyle dene: neyin döndüğünü gözünle gör.
 
-**Giriş gerektiren uç noktalar** (giriş özelliği backend'e eklendiğinde):
+**Giriş gerektiren uç noktalar:**
 
-1. `POST /api/auth/login` uç noktasını e-posta ve parolayla dene, yanıttaki `accessToken` değerini kopyala.
-2. Scalar'ın üstündeki **Authentication** bölümünde Bearer kutusuna token'ı yapıştır.
-3. Artık diğer uç noktaları o kullanıcı olarak deneyebilirsin. Token 60 dakika geçerli; süre dolunca 401 alırsın, yeniden giriş yap.
+1. Hesabın yoksa `POST /api/auth/register` ile diyetisyen hesabı aç (paket kimliğini `GET /api/subscription-plans` yanıtından al). Varsa `POST /api/auth/login` uç noktasını e-posta ve parolayla dene.
+2. Yanıttaki `accessToken` değerini kopyala.
+3. Denediğin uç noktada **Headers** bölümüne `Authorization` başlığını ekle, değeri `Bearer <token>` olsun (araya bir boşluk).
+4. Artık o kullanıcı olarak istek atarsın. Token 60 dakika geçerli; süre dolunca 401 alırsın, yeniden giriş yap.
+
+Parola sıfırlama e-postaları gerçek adrese gitmez, Mailpit'e düşer: http://localhost:8025 → bağlantıdaki `token=` değerini `POST /api/auth/reset-password` isteğinde kullan.
 
 ## 4. Durum kodları ne demek?
 

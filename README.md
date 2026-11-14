@@ -86,8 +86,12 @@ Yalnızca web'de çalışan biri için Docker + Node.js yeterli.
    dotnet user-secrets set "Storage:AccessKey" "ddts-dev" --project src/Ddts.Api
    dotnet user-secrets set "Storage:SecretKey" "<S3_SECRET_KEY>" --project src/Ddts.Api
    dotnet user-secrets set "Jwt:SigningKey" "<JWT_SIGNING_KEY>" --project src/Ddts.Api
+   dotnet user-secrets set "Seed:AdminEmail" "admin@ornek.test" --project src/Ddts.Api
+   dotnet user-secrets set "Seed:AdminPassword" "<ADMIN_PASSWORD>" --project src/Ddts.Api
    dotnet user-secrets set "Usda:ApiKey" "<USDA anahtarı, varsa>" --project src/Ddts.Api
    ```
+   - `Jwt:SigningKey` en az 32 karakter olmalı; boş ya da kısa olursa API açılmaz. Rastgele üretmek için PowerShell: `$b = New-Object byte[] 48; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); [Convert]::ToBase64String($b)`
+   - `Seed:*` ayarları ilk açılışta platform yöneticisi hesabını oluşturur (zaten bir yönetici varsa dokunmaz).
 3. Çalıştırın: `dotnet watch --project src/Ddts.Api` (veya Visual Studio / Rider'dan) → http://localhost:8080/scalar
 
 ### Yeni bir özellik eklerken (örnek: "danışan ekle")

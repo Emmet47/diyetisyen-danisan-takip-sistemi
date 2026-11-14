@@ -71,6 +71,10 @@ services:
       Smtp__Port: "1025"
       Jwt__SigningKey: ${JWT_SIGNING_KEY:?.env dosyasinda JWT_SIGNING_KEY bos}
       Usda__ApiKey: ${USDA_API_KEY:-}
+      Web__BaseUrl: http://localhost:3000
+      # İlk yönetici hesabı: ADMIN_PASSWORD boşsa oluşturulmaz
+      Seed__AdminEmail: ${ADMIN_EMAIL:-admin@ornek.test}
+      Seed__AdminPassword: ${ADMIN_PASSWORD:-}
     ports:
       - "8080:8080"   # API deneme arayüzü (Scalar): http://localhost:8080/scalar
     depends_on:
