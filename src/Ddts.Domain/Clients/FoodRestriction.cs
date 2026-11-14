@@ -19,4 +19,7 @@ public sealed class FoodRestriction
     public Guid FoodItemId { get; private set; }
 
     public RestrictionType Type { get; private set; }
+
+    /// <summary>Yalnızca Client.SetRestrictions kullanır: listede kalan besinin türü değişir.</summary>
+    internal void ChangeType(RestrictionType type) => Type = type;
 }

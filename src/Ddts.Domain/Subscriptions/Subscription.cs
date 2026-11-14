@@ -52,9 +52,12 @@ public sealed class Subscription
             throw new SubscriptionLimitException("Aboneliğin aktif değil. Yeni danışan eklemek için aboneliğini yenile.");
         }
 
-        if (activeClients >= LoadedPlan().MaxClients)
+        var plan = LoadedPlan();
+        if (activeClients >= plan.MaxClients)
         {
-            throw new SubscriptionLimitException("Paket limitin doldu, paketini yükseltmelisin.");
+            throw new SubscriptionLimitException(
+                $"{plan.Name} paketinde en fazla {plan.MaxClients} aktif danışan olabilir. " +
+                "Paketini yükseltebilir ya da bir danışanı pasife alabilirsin.");
         }
     }
 

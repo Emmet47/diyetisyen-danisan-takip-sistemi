@@ -15,7 +15,8 @@ public sealed class AbonelikTests
 
         abonelik.EnsureCanAddClient(9);
 
-        Assert.Throws<SubscriptionLimitException>(() => abonelik.EnsureCanAddClient(10));
+        var hata = Assert.Throws<SubscriptionLimitException>(() => abonelik.EnsureCanAddClient(10));
+        Assert.StartsWith("Başlangıç paketinde en fazla 10 aktif danışan olabilir.", hata.Message);
     }
 
     [Fact]
