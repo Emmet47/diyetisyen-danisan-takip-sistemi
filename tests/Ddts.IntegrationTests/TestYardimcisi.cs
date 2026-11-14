@@ -71,16 +71,16 @@ internal static class TestYardimcisi
     }
 
     /// <summary>Giriş denemesi. Giriş ucu dakikada 5 denemeyle sınırlı: her test sınıfı bunu hesaba katar.</summary>
-    public static async Task<HttpResponseMessage> GirisAsync(ApiFactory factory, string eposta)
+    public static async Task<HttpResponseMessage> GirisAsync(ApiFactory factory, string eposta, string parola = Parola)
     {
         using var http = factory.CreateClient();
-        return await http.PostAsJsonAsync("/api/auth/login", new { email = eposta, password = Parola }, Iptal);
+        return await http.PostAsJsonAsync("/api/auth/login", new { email = eposta, password = parola }, Iptal);
     }
 
     /// <summary>Başarılı girişten sonra token'ı taşıyan istemci.</summary>
-    public static async Task<HttpClient> GirisYapmisIstemciAsync(ApiFactory factory, string eposta)
+    public static async Task<HttpClient> GirisYapmisIstemciAsync(ApiFactory factory, string eposta, string parola = Parola)
     {
-        var yanit = await GirisAsync(factory, eposta);
+        var yanit = await GirisAsync(factory, eposta, parola);
         Assert.Equal(HttpStatusCode.OK, yanit.StatusCode);
         var giris = await yanit.Content.ReadFromJsonAsync<GirisYaniti>(Iptal);
 
