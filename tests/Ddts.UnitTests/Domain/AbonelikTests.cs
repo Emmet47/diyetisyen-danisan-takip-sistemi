@@ -64,6 +64,33 @@ public sealed class AbonelikTests
         Assert.Throws<DomainException>(abonelik.Cancel);
     }
 
+    [Fact]
+    public void Yonetici_paketi_duzenler_ve_satistan_kaldirir()
+    {
+        var paket = new SubscriptionPlan("Başlangıç", 10, 299m);
+
+        paket.Update("Başlangıç Plus", 15, 349.90m, isActive: false);
+
+        Assert.Equal("Başlangıç Plus", paket.Name);
+        Assert.Equal(15, paket.MaxClients);
+        Assert.Equal(349.90m, paket.MonthlyPrice);
+        Assert.False(paket.IsActive);
+        Assert.Throws<DomainException>(() => paket.Update("Boş", 0, 100m, true));
+        Assert.Throws<DomainException>(() => paket.Update(" ", 10, 100m, true));
+        Assert.Throws<DomainException>(() => paket.Update("Pahalı", 10, -1m, true));
+    }
+
+    [Fact]
+    public void Limit_dusurulen_pakette_yeni_limit_gecerli_olur()
+    {
+        var abonelik = BaslangicAboneligi();   // en fazla 10 danışan
+
+        abonelik.Plan.Update("Başlangıç", 5, 299m, isActive: true);
+
+        Assert.Throws<SubscriptionLimitException>(() => abonelik.EnsureCanAddClient(5));
+        Assert.True(abonelik.IsNearLimit(4));
+    }
+
     private static Subscription BaslangicAboneligi() =>
         new(TestVerisi.Diyetisyen().Id, new SubscriptionPlan("Başlangıç", 10, 299m), Bugun);
 }

@@ -14,15 +14,8 @@ public sealed class SubscriptionPlan
 
     public SubscriptionPlan(string name, int maxClients, decimal monthlyPrice)
     {
-        if (maxClients <= 0)
-        {
-            throw new DomainException("Danışan limiti 0'dan büyük olmalı.");
-        }
-
         Id = Guid.CreateVersion7();
-        Name = Guard.Required(name, 50, "Paket adı");
-        MaxClients = maxClients;
-        MonthlyPrice = Guard.InRange(monthlyPrice, 0m, 999999.99m, "Aylık ücret");
+        Apply(name, maxClients, monthlyPrice);
         IsActive = true;
     }
 
@@ -38,4 +31,26 @@ public sealed class SubscriptionPlan
 
     /// <summary>Satışta mı?</summary>
     public bool IsActive { get; private set; }
+
+    /// <summary>
+    /// Yönetici paketi düzenler ya da satıştan kaldırır (FR-L1). Paketi kullanan diyetisyenlerin
+    /// aboneliği sürer; yeni limit onların da bir sonraki danışan eklemesinde geçerli olur.
+    /// </summary>
+    public void Update(string name, int maxClients, decimal monthlyPrice, bool isActive)
+    {
+        Apply(name, maxClients, monthlyPrice);
+        IsActive = isActive;
+    }
+
+    private void Apply(string name, int maxClients, decimal monthlyPrice)
+    {
+        if (maxClients <= 0)
+        {
+            throw new DomainException("Danışan limiti 0'dan büyük olmalı.");
+        }
+
+        Name = Guard.Required(name, 50, "Paket adı");
+        MaxClients = maxClients;
+        MonthlyPrice = Guard.InRange(monthlyPrice, 0m, 999999.99m, "Aylık ücret");
+    }
 }
