@@ -8,6 +8,7 @@ using Ddts.Application.Abstractions.Payments;
 using Ddts.Application.Abstractions.Persistence;
 using Ddts.Application.Abstractions.Security;
 using Ddts.Application.Auth;
+using Ddts.Application.Clients;
 using Ddts.Application.Common;
 using Ddts.Application.Subscriptions;
 using Ddts.Infrastructure.Auditing;
@@ -114,6 +115,8 @@ builder.Services.AddScoped<IDietitianRepository, EfDietitianRepository>();
 builder.Services.AddScoped<IClientRepository, EfClientRepository>();
 builder.Services.AddScoped<ISubscriptionPlanRepository, EfSubscriptionPlanRepository>();
 builder.Services.AddScoped<ISubscriptionRepository, EfSubscriptionRepository>();
+builder.Services.AddScoped<IFoodItemRepository, EfFoodItemRepository>();
+builder.Services.AddScoped<IAuditLogRepository, EfAuditLogRepository>();
 
 builder.Services.AddSingleton<IPasswordHasher, AspNetPasswordHasher>();
 builder.Services.AddScoped<ITokenService, JwtTokenService>();
@@ -131,6 +134,7 @@ builder.Services.AddSingleton(serviceProvider => new AppLinks(
 // ---- Use case servisleri (gelen portlar) ----
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
+builder.Services.AddScoped<IClientService, ClientService>();
 
 var app = builder.Build();
 
