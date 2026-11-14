@@ -116,6 +116,25 @@ public sealed class SubscriptionService(
         return await ToStatusAsync(subscription, dietitianId, cancellationToken);
     }
 
+    public async Task<int> ExpireDueAsync(CancellationToken cancellationToken = default)
+    {
+        var due = await subscriptions.ListDueForExpiryAsync(Today(), cancellationToken);
+
+        foreach (var subscription in due)
+        {
+            // Süresi dolan abonelikte yeni danışan ve plan eklenemez, mevcut veriler okunabilir (FR-L4).
+            subscription.Expire();
+            await auditLogger.LogAsync("SubscriptionExpired", "Subscription", subscription.Id, null, cancellationToken);
+        }
+
+        if (due.Count > 0)
+        {
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+
+        return due.Count;
+    }
+
     private async Task<SubscriptionStatusDto> ToStatusAsync(Subscription subscription, Guid dietitianId, CancellationToken cancellationToken)
     {
         var activeClients = await clients.CountActiveAsync(dietitianId, cancellationToken);

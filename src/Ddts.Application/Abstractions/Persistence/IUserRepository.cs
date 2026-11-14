@@ -15,6 +15,9 @@ public interface IUserRepository
 
     Task<bool> EmailExistsAsync(string email, CancellationToken cancellationToken = default);
 
+    /// <summary>Verilen kimliklerdeki hesaplar (yönetici listesinde e-posta ve aktiflik için).</summary>
+    Task<IReadOnlyList<User>> GetManyAsync(IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken = default);
+
     void Add(User user);
 
     /// <summary>Hesabı siler (danışanın kalıcı silinmesi, FR-B4). Veritabanı bağlı kayıtları zincirleme siler.</summary>
