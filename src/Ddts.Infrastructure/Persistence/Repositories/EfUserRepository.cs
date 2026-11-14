@@ -28,6 +28,8 @@ public sealed class EfUserRepository(DdtsDbContext db) : IUserRepository
 
     public void Add(User user) => db.Users.Add(user);
 
+    public void Remove(User user) => db.Users.Remove(user);
+
     // User sınıfı e-postayı aynı şekilde saklar (küçük harf, boşluksuz).
     private static string Normalize(string email) => email.Trim().ToLowerInvariant();
 }
