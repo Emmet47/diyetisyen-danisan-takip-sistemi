@@ -2,11 +2,13 @@ using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Ddts.Api.Errors;
 using Ddts.Api.Security;
+using Ddts.Api.Workers;
 using Ddts.Application.Abstractions.Auditing;
 using Ddts.Application.Abstractions.Email;
 using Ddts.Application.Abstractions.Payments;
 using Ddts.Application.Abstractions.Persistence;
 using Ddts.Application.Abstractions.Security;
+using Ddts.Application.Admin;
 using Ddts.Application.Auth;
 using Ddts.Application.Clients;
 using Ddts.Application.Common;
@@ -137,6 +139,10 @@ builder.Services.AddSingleton(serviceProvider => new AppLinks(
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
 builder.Services.AddScoped<IClientService, ClientService>();
+builder.Services.AddScoped<IAdminService, AdminService>();
+
+// Zamanlanmış iş (sürücü adapter): 10 dakikada bir süresi dolan abonelikler (ileride hatırlatmalar da)
+builder.Services.AddHostedService<ReminderWorker>();
 
 var app = builder.Build();
 
