@@ -262,7 +262,7 @@ HTTP/1.1 401 Unauthorized
 | Danışan ekleme, güncelleme, pasife alma, silme | ✓ kendi | — | — |
 | Danışan profilini görme | ✓ kendi | ✓ kendi | — |
 | Değişiklik geçmişini görme | ✓ kendi | — | — |
-| Ölçüm ekleme, düzeltme | ✓ kendi | — | — |
+| Ölçüm ekleme, düzeltme, silme | ✓ kendi | — | — |
 | Ölçüm geçmişi ve grafik | ✓ kendi | ✓ kendi | — |
 | İlerleme paneli ve PDF rapor | ✓ kendi | — | — |
 | Besin arama, dış kaynaktan aktarma | ✓ | — | — |
