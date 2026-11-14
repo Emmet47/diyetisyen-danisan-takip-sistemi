@@ -26,6 +26,16 @@ public sealed class EfUserRepository(DdtsDbContext db) : IUserRepository
         return db.Users.AnyAsync(u => u.Email == normalized, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<User>> GetManyAsync(IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken = default)
+    {
+        if (userIds.Count == 0)
+        {
+            return [];
+        }
+
+        return await db.Users.AsNoTracking().Where(u => userIds.Contains(u.Id)).ToListAsync(cancellationToken);
+    }
+
     public void Add(User user) => db.Users.Add(user);
 
     public void Remove(User user) => db.Users.Remove(user);
