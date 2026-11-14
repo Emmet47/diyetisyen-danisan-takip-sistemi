@@ -43,4 +43,10 @@ public sealed class AuditLog
 
     /// <summary>Kayıt anı; veritabanı yazar (DEFAULT now()).</summary>
     public DateTime CreatedAt { get; private set; }
+
+    /// <summary>
+    /// Değer ayrıntılarını siler; "kim, ne zaman, hangi işlem" kalır. Danışan kalıcı silinince
+    /// onun kayıtlarındaki sağlık verisi böyle temizlenir (belge 2.5, madde 4).
+    /// </summary>
+    public void ClearDetails() => Details = null;
 }

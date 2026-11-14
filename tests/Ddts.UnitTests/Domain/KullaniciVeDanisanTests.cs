@@ -1,3 +1,4 @@
+using Ddts.Domain.Auditing;
 using Ddts.Domain.Clients;
 using Ddts.Domain.Common;
 using Ddts.Domain.MealLogs;
@@ -69,6 +70,79 @@ public sealed class KullaniciVeDanisanTests
         Assert.Null(danisan.GetRestriction(Guid.NewGuid()));
         Assert.Throws<DomainException>(() =>
             danisan.UpdateProfile(new ClientProfile("Yeni Ad", null, GoalType.Maintain, 10m, null, null)));
+    }
+
+    [Fact]
+    public void Dogum_tarihi_gelecekte_olamaz()
+    {
+        var diyetisyen = TestVerisi.Diyetisyen();
+        var profil = new ClientProfile("Deneme Danışan", null, GoalType.Maintain, null, null, null);
+
+        Assert.Throws<DomainException>(() =>
+            new Client(diyetisyen.Id, Guid.NewGuid(), profil, new DateOnly(2027, 1, 1), Sex.Female, TestVerisi.Simdi));
+        Assert.Throws<DomainException>(() =>
+            new Client(diyetisyen.Id, Guid.NewGuid(), profil, new DateOnly(1899, 12, 31), Sex.Female, TestVerisi.Simdi));
+    }
+
+    [Fact]
+    public void Pasif_danisan_ve_hesabi_yeniden_aktiflesir()
+    {
+        var danisan = TestVerisi.Danisan(TestVerisi.Diyetisyen());
+        var hesap = new User("danisan.b@ornek.test", UserRole.Client);
+
+        danisan.Deactivate();
+        hesap.Deactivate();
+        Assert.False(danisan.IsActive);
+        Assert.False(hesap.IsActive);
+
+        danisan.Activate();
+        hesap.Activate();
+        Assert.True(danisan.IsActive);
+        Assert.True(hesap.IsActive);
+    }
+
+    [Fact]
+    public void Kisit_listesi_verilen_listeyle_degisir()
+    {
+        var danisan = TestVerisi.Danisan(TestVerisi.Diyetisyen());
+        Guid yumurta = Guid.NewGuid(), peynir = Guid.NewGuid(), fistik = Guid.NewGuid();
+
+        danisan.SetRestrictions([new FoodRestriction(yumurta, RestrictionType.Allergy), new FoodRestriction(peynir, RestrictionType.Dislike)]);
+        var ilkYumurtaKaydi = danisan.Restrictions.Single(r => r.FoodItemId == yumurta);
+
+        danisan.SetRestrictions([new FoodRestriction(yumurta, RestrictionType.Dislike), new FoodRestriction(fistik, RestrictionType.Allergy)]);
+
+        Assert.Equal(2, danisan.Restrictions.Count);
+        Assert.Equal(RestrictionType.Dislike, danisan.GetRestriction(yumurta));
+        Assert.Null(danisan.GetRestriction(peynir));
+        Assert.Equal(RestrictionType.Allergy, danisan.GetRestriction(fistik));
+
+        // Listede kalan besinin kaydı aynı nesne, yalnızca türü değişti (veritabanında UPDATE)
+        Assert.Same(ilkYumurtaKaydi, danisan.Restrictions.Single(r => r.FoodItemId == yumurta));
+    }
+
+    [Fact]
+    public void Ayni_besin_kisit_listesine_iki_kez_eklenemez()
+    {
+        var danisan = TestVerisi.Danisan(TestVerisi.Diyetisyen());
+        var besin = Guid.NewGuid();
+
+        Assert.Throws<DomainException>(() => danisan.SetRestrictions(
+            [new FoodRestriction(besin, RestrictionType.Allergy), new FoodRestriction(besin, RestrictionType.Dislike)]));
+        Assert.Empty(danisan.Restrictions);
+    }
+
+    [Fact]
+    public void Denetim_kaydinin_ayrintisi_temizlenir_islem_bilgisi_kalir()
+    {
+        var kayit = new AuditLog(Guid.NewGuid(), "ClientUpdated", "Client", Guid.NewGuid(),
+            """{"targetWeightKg":{"old":"65","new":"62"}}""", null);
+
+        kayit.ClearDetails();
+
+        Assert.Null(kayit.Details);
+        Assert.Equal("ClientUpdated", kayit.Action);
+        Assert.Equal("Client", kayit.EntityType);
     }
 
     [Fact]

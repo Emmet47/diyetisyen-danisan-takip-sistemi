@@ -8,6 +8,7 @@ using Ddts.Application.Abstractions.Payments;
 using Ddts.Application.Abstractions.Persistence;
 using Ddts.Application.Abstractions.Security;
 using Ddts.Application.Auth;
+using Ddts.Application.Clients;
 using Ddts.Application.Common;
 using Ddts.Application.Subscriptions;
 using Ddts.Infrastructure.Auditing;
@@ -37,6 +38,8 @@ builder.Services
     .AddControllers()
     // Enum'lar JSON'da metin olarak gider/gelir: "role": "Dietitian" (docs/api.md 8.3)
     .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+// OpenAPI belgesi şemaları bu ayardan üretir: Scalar'da enum'lar sayı değil metin görünsün ("sex": "Female").
+builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddProblemDetails();   // Hatalar RFC 9457 ProblemDetails biçiminde döner
 builder.Services.AddExceptionHandler<ProblemDetailsExceptionHandler>();   // servis hataları → 400/401/404/409
 builder.Services.AddOpenApi();          // /openapi/v1.json (controller'lardaki XML yorumları da eklenir)
@@ -114,6 +117,8 @@ builder.Services.AddScoped<IDietitianRepository, EfDietitianRepository>();
 builder.Services.AddScoped<IClientRepository, EfClientRepository>();
 builder.Services.AddScoped<ISubscriptionPlanRepository, EfSubscriptionPlanRepository>();
 builder.Services.AddScoped<ISubscriptionRepository, EfSubscriptionRepository>();
+builder.Services.AddScoped<IFoodItemRepository, EfFoodItemRepository>();
+builder.Services.AddScoped<IAuditLogRepository, EfAuditLogRepository>();
 
 builder.Services.AddSingleton<IPasswordHasher, AspNetPasswordHasher>();
 builder.Services.AddScoped<ITokenService, JwtTokenService>();
@@ -131,6 +136,7 @@ builder.Services.AddSingleton(serviceProvider => new AppLinks(
 // ---- Use case servisleri (gelen portlar) ----
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
+builder.Services.AddScoped<IClientService, ClientService>();
 
 var app = builder.Build();
 

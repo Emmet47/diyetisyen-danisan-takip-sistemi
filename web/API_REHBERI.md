@@ -134,6 +134,7 @@ setToken(sonuc.accessToken)   // bundan sonraki tüm istekler bu token'la gider
 - Tarih-saatler API'de UTC ve ISO 8601 biçiminde (`2026-12-01T07:00:00Z`); ekranda Türkiye saatine çevirip göster.
 - Uzun listeler sayfalı: `?page=1&pageSize=20`.
 - Parola sıfırlama gibi e-postalar gerçekten gitmez; **http://localhost:8025** (Mailpit) gelen kutusunda görünür.
+- Danışan eklenince (`POST /api/clients`) danışana giden davet e-postası da Mailpit'e düşer. Davet bağlantısı parola sıfırlamayla aynı `/reset-password?token=...` sayfasını açar; danışan orada parolasını belirler, sonra mobil uygulamadan giriş yapar.
 
 ## 7. Takıldığında
 

@@ -23,12 +23,19 @@ public sealed class Client
         Sex sex,
         DateTime kvkkConsentAt)
     {
+        KvkkConsentAt = Guard.Utc(kvkkConsentAt, nameof(kvkkConsentAt));
+
+        // Doğum tarihi geçmişte olmalı (enerji formülleri yaşı kullanır).
+        if (birthDate.Year < 1900 || birthDate >= DateOnly.FromDateTime(KvkkConsentAt))
+        {
+            throw new DomainException("Doğum tarihi geçmişte bir tarih olmalı.");
+        }
+
         Id = Guid.CreateVersion7();
         DietitianId = dietitianId;
         UserId = userId;
         BirthDate = birthDate;
         Sex = sex;
-        KvkkConsentAt = Guard.Utc(kvkkConsentAt, nameof(kvkkConsentAt));
         IsActive = true;
         Notifications = NotificationSettings.AllEnabled;
         ApplyProfile(profile);
@@ -77,6 +84,41 @@ public sealed class Client
     public void UpdateProfile(ClientProfile changes) => ApplyProfile(changes);
 
     public void Deactivate() => IsActive = false;
+
+    /// <summary>
+    /// Pasif danışanı yeniden aktifleştirir. Paket limiti servis katmanında, aktifleştirmeden
+    /// önce yeniden kontrol edilir (FR-B4, FR-L2).
+    /// </summary>
+    public void Activate() => IsActive = true;
+
+    /// <summary>
+    /// Alerji/kısıt listesini verilen listeyle değiştirir (FR-B2). Bir besin listede bir kez olur.
+    /// Listede kalan besinin yalnızca türü güncellenir; çıkan besin silinir, yeni besin eklenir.
+    /// </summary>
+    public void SetRestrictions(IEnumerable<FoodRestriction> restrictions)
+    {
+        var newList = restrictions.ToList();
+
+        if (newList.Select(r => r.FoodItemId).Distinct().Count() != newList.Count)
+        {
+            throw new DomainException("Bir besin kısıt listesinde yalnızca bir kez yer alabilir.");
+        }
+
+        _restrictions.RemoveAll(existing => newList.All(r => r.FoodItemId != existing.FoodItemId));
+
+        foreach (var restriction in newList)
+        {
+            var existing = _restrictions.FirstOrDefault(r => r.FoodItemId == restriction.FoodItemId);
+            if (existing is null)
+            {
+                _restrictions.Add(restriction);
+            }
+            else
+            {
+                existing.ChangeType(restriction.Type);
+            }
+        }
+    }
 
     /// <summary>Verilen tarihteki yaş (enerji formülleri için).</summary>
     public int AgeOn(DateOnly date)

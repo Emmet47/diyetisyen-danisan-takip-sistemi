@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using Ddts.Application.Abstractions.Auditing;
 using Ddts.Application.Abstractions.Email;
 using Ddts.Application.Abstractions.Payments;
@@ -28,9 +26,6 @@ public sealed class AuthService(
     AppLinks links,
     TimeProvider timeProvider) : IAuthService
 {
-    /// <summary>Sıfırlama / davet bağlantısı 30 dakika geçerli (FR-A3).</summary>
-    public static readonly TimeSpan ResetLinkLifetime = TimeSpan.FromMinutes(30);
-
     public const int MinPasswordLength = 8;
 
     public const int MaxPasswordLength = 100;
@@ -106,8 +101,8 @@ public sealed class AuthService(
         }
 
         // Bağlantıdaki token rastgele; veritabanına yalnızca hash'i yazılır.
-        var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
-        user.StartPasswordReset(HashToken(token), timeProvider.GetUtcNow().UtcDateTime.Add(ResetLinkLifetime));
+        var token = ResetTokens.NewToken();
+        user.StartPasswordReset(ResetTokens.Hash(token), timeProvider.GetUtcNow().UtcDateTime.Add(ResetTokens.Lifetime));
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         await emailSender.SendPasswordResetAsync(user.Email, links.PasswordReset(token), cancellationToken);
@@ -115,7 +110,7 @@ public sealed class AuthService(
 
     public async Task ResetPasswordAsync(ResetPasswordCommand command, CancellationToken cancellationToken = default)
     {
-        var tokenHash = HashToken(command.Token);
+        var tokenHash = ResetTokens.Hash(command.Token);
         var user = await users.GetByResetTokenHashAsync(tokenHash, cancellationToken);
 
         if (user is null || !user.IsResetTokenValid(tokenHash, timeProvider.GetUtcNow().UtcDateTime))
@@ -130,10 +125,6 @@ public sealed class AuthService(
         await auditLogger.LogAsync("PasswordReset", "User", user.Id, null, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
     }
-
-    /// <summary>Davet ve sıfırlama token'larının veritabanındaki hali (SHA-256, onaltılık).</summary>
-    public static string HashToken(string token) =>
-        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
 
     private static void EnsureValidPassword(string password)
     {

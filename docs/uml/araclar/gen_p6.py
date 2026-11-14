@@ -47,11 +47,13 @@ nodes = {
                                 '+GetByEmailAsync(email: string): User [0..1]',
                                 '+GetByResetTokenHashAsync(tokenHash: string): User [0..1]',
                                 '+EmailExistsAsync(email: string): bool',
-                                '+Add(user: User): void']),
+                                '+Add(user: User): void',
+                                '+Remove(user: User): void']),
     'IDietitianRepository': (R, [], ['+GetAsync(dietitianId: Guid): Dietitian [0..1]',
                                      '+Add(dietitian: Dietitian): void']),
     'ISubscriptionPlanRepository': (R, [], ['+GetAsync(subscriptionPlanId: Guid): SubscriptionPlan [0..1]',
                                             '+ListActiveAsync(): SubscriptionPlan[0..*]']),
+    'IAuditLogRepository': (R, [], ['+ListForEntityAsync(entityType: string, entityId: Guid): AuditLog[0..*]']),
 }
 note_style = 'shape=note, style=filled, fillcolor="#fff8dc", color="#999999", fontsize=10'
 out = ['digraph G {',
@@ -70,15 +72,17 @@ out.append('  label="Diğer repository arayüzleri (EF Core uygulamaları aynı 
 out.append('  labeljust=l; style="rounded,dashed"; color="#888888"; fontsize=10; fontname="DejaVu Sans";')
 grid = [['INutritionPlanRepository', 'IPlanTemplateRepository', 'IFoodItemRepository'],
         ['IMeasurementRepository', 'IMealLogRepository', 'IAppointmentRepository'],
-        ['IUserRepository', 'IDietitianRepository', 'ISubscriptionPlanRepository']]
+        ['IUserRepository', 'IDietitianRepository', 'ISubscriptionPlanRepository'],
+        ['IAuditLogRepository']]
 for row in grid:
     for n in row:
         s, a, o = nodes[n]
         out.append(f'  {n} [label={box(n, s, a, o)}];')
-    out.append('  { rank=same; ' + '; '.join(row) + '; }')
-    out.append('  ' + ' -> '.join(row) + ' [style=invis];')
+    if len(row) > 1:
+        out.append('  { rank=same; ' + '; '.join(row) + '; }')
+        out.append('  ' + ' -> '.join(row) + ' [style=invis];')
 for r in range(len(grid) - 1):
-    for i in range(3):
+    for i in range(min(len(grid[r]), len(grid[r + 1]))):
         out.append(f'  {grid[r][i]} -> {grid[r + 1][i]} [style=invis];')
 out.append(' }')
 # notlar

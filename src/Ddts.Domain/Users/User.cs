@@ -78,6 +78,9 @@ public sealed class User
     /// <summary>Hesabı kapatır; pasif kullanıcı giriş yapamaz (her istekte kontrol edilir, ADR-0006).</summary>
     public void Deactivate() => IsActive = false;
 
+    /// <summary>Kapatılan hesabı yeniden açar (pasif danışanın aktifleştirilmesi, FR-B4; yönetici, FR-L5).</summary>
+    public void Activate() => IsActive = true;
+
     private static string NormalizeEmail(string email)
     {
         var normalized = Guard.Required(email, 254, "E-posta").ToLowerInvariant();
