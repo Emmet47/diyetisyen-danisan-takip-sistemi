@@ -13,6 +13,7 @@ class User {
   +StartPasswordReset(tokenHash: string, expiresAt: DateTime) void
   +IsResetTokenValid(tokenHash: string, now: DateTime) bool
   +Deactivate() void
+  +Activate() void
 }
 class Dietitian {
   +Id: Guid
@@ -40,6 +41,8 @@ class Client {
   +Notifications: NotificationSettings
   +UpdateProfile(changes: ClientProfile) void
   +Deactivate() void
+  +Activate() void
+  +SetRestrictions(restrictions: FoodRestriction[0..#42;]) void
   +AgeOn(date: DateOnly) int
   +GetRestriction(foodItemId: Guid) RestrictionType [0..1]
   +AllowsNotification(type: NotificationType) bool
@@ -120,6 +123,7 @@ class AuditLog {
   +Details: string [0..1]
   +IpAddress: string [0..1]
   +CreatedAt: DateTime
+  +ClearDetails() void
 }
 Dietitian "0..1" --> "1" User : hesap
 Client "0..1" --> "1" User : hesap
