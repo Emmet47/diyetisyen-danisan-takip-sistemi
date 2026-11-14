@@ -12,6 +12,7 @@ using Ddts.Application.Admin;
 using Ddts.Application.Auth;
 using Ddts.Application.Clients;
 using Ddts.Application.Common;
+using Ddts.Application.Measurements;
 using Ddts.Application.Subscriptions;
 using Ddts.Infrastructure.Auditing;
 using Ddts.Infrastructure.Email;
@@ -121,6 +122,7 @@ builder.Services.AddScoped<ISubscriptionPlanRepository, EfSubscriptionPlanReposi
 builder.Services.AddScoped<ISubscriptionRepository, EfSubscriptionRepository>();
 builder.Services.AddScoped<IFoodItemRepository, EfFoodItemRepository>();
 builder.Services.AddScoped<IAuditLogRepository, EfAuditLogRepository>();
+builder.Services.AddScoped<IMeasurementRepository, EfMeasurementRepository>();
 
 builder.Services.AddSingleton<IPasswordHasher, AspNetPasswordHasher>();
 builder.Services.AddScoped<ITokenService, JwtTokenService>();
@@ -139,6 +141,7 @@ builder.Services.AddSingleton(serviceProvider => new AppLinks(
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
 builder.Services.AddScoped<IClientService, ClientService>();
+builder.Services.AddScoped<IMeasurementService, MeasurementService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
 
 // Zamanlanmış iş (sürücü adapter): 10 dakikada bir süresi dolan abonelikler (ileride hatırlatmalar da)
