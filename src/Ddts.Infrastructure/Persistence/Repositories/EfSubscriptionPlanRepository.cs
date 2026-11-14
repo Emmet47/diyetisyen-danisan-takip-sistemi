@@ -18,4 +18,13 @@ public sealed class EfSubscriptionPlanRepository(DdtsDbContext db) : ISubscripti
             .Where(p => p.IsActive)
             .OrderBy(p => p.MaxClients)
             .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<SubscriptionPlan>> ListAllAsync(CancellationToken cancellationToken = default) =>
+        await db.SubscriptionPlans
+            .AsNoTracking()
+            .OrderBy(p => p.MaxClients)
+            .ThenBy(p => p.Name)
+            .ToListAsync(cancellationToken);
+
+    public void Add(SubscriptionPlan plan) => db.SubscriptionPlans.Add(plan);
 }

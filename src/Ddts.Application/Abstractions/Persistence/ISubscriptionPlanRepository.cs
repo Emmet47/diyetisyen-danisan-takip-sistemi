@@ -9,4 +9,9 @@ public interface ISubscriptionPlanRepository
 
     /// <summary>Satıştaki paketler, danışan limitine göre sıralı.</summary>
     Task<IReadOnlyList<SubscriptionPlan>> ListActiveAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Satıştan kaldırılanlar dahil bütün paketler (yönetici, FR-L1).</summary>
+    Task<IReadOnlyList<SubscriptionPlan>> ListAllAsync(CancellationToken cancellationToken = default);
+
+    void Add(SubscriptionPlan plan);
 }

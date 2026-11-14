@@ -14,4 +14,10 @@ public interface ISubscriptionService
 
     /// <summary>Ödeme simülasyonuyla bir ay uzatma (FR-L4).</summary>
     Task<SubscriptionStatusDto> RenewAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Bitiş tarihi geçen aktif abonelikleri "süresi doldu" yapar (FR-L4); kaç abonelik değiştiğini döner.
+    /// ReminderWorker 10 dakikada bir çağırır.
+    /// </summary>
+    Task<int> ExpireDueAsync(CancellationToken cancellationToken = default);
 }

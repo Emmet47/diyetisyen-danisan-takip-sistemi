@@ -90,6 +90,7 @@ class SubscriptionPlan {
   +MaxClients: int
   +MonthlyPrice: decimal
   +IsActive: bool
+  +Update(name: string, maxClients: int, monthlyPrice: decimal, isActive: bool) void
 }
 class Subscription {
   +Id: Guid

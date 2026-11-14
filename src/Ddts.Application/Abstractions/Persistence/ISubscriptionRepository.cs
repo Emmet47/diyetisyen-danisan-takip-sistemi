@@ -14,5 +14,8 @@ public interface ISubscriptionRepository
     /// <summary>Aktif abonelik; yoksa bitiş tarihi en geç olan (süresi dolmuş ya da iptal edilmiş) abonelik.</summary>
     Task<Subscription?> GetCurrentAsync(Guid dietitianId, CancellationToken cancellationToken = default);
 
+    /// <summary>Bitiş tarihi geçmiş (bugünden önce) ama hâlâ Active görünen abonelikler, paketleriyle.</summary>
+    Task<IReadOnlyList<Subscription>> ListDueForExpiryAsync(DateOnly today, CancellationToken cancellationToken = default);
+
     void Add(Subscription subscription);
 }

@@ -33,5 +33,11 @@ public sealed class EfSubscriptionRepository(DdtsDbContext db) : ISubscriptionRe
             ?? await dietitianSubscriptions.OrderByDescending(s => s.EndDate).FirstOrDefaultAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Subscription>> ListDueForExpiryAsync(DateOnly today, CancellationToken cancellationToken = default) =>
+        await db.Subscriptions
+            .Include(s => s.Plan)
+            .Where(s => s.Status == SubscriptionStatus.Active && s.EndDate < today)
+            .ToListAsync(cancellationToken);
+
     public void Add(Subscription subscription) => db.Subscriptions.Add(subscription);
 }
