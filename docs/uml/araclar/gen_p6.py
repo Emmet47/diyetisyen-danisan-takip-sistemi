@@ -20,11 +20,13 @@ nodes = {
                                   '+ListAsync(dietitianId: Guid, onlyActive: bool): Client[0..*]',
                                   '+CountActiveAsync(dietitianId: Guid): int',
                                   '+Add(client: Client): void', '+Remove(client: Client): void']),
-    'ISubscriptionRepository': (R, [], ['+GetActiveForUpdateAsync(dietitianId: Guid): Subscription [0..1]']),
+    'ISubscriptionRepository': (R, [], ['+GetActiveForUpdateAsync(dietitianId: Guid): Subscription [0..1]',
+                                        '+GetCurrentAsync(dietitianId: Guid): Subscription [0..1]',
+                                        '+Add(subscription: Subscription): void']),
     'IUnitOfWork': ('interface', [], ['+SaveChangesAsync(): int', '+ExecuteInTransactionAsync(work: Func<Task>): void']),
     'EfClientRepository': ('', [], ['+GetAsync(dietitianId: Guid, clientId: Guid): Client [0..1]',
                                     '+CountActiveAsync(dietitianId: Guid): int', '…']),
-    'EfSubscriptionRepository': ('', [], ['+GetActiveForUpdateAsync(dietitianId: Guid): Subscription [0..1]']),
+    'EfSubscriptionRepository': ('', [], ['+GetActiveForUpdateAsync(dietitianId: Guid): Subscription [0..1]', '…']),
     'EfUnitOfWork': ('', [], ['+SaveChangesAsync(): int', '+ExecuteInTransactionAsync(work: Func<Task>): void']),
     'DdtsDbContext': ('EF Core DbContext', [], []),
     'INutritionPlanRepository': (R, [], ['+GetAsync(dietitianId: Guid, planId: Guid): NutritionPlan [0..1]',
@@ -41,6 +43,15 @@ nodes = {
     'IAppointmentRepository': (R, [], ['+GetAsync(dietitianId: Guid, appointmentId: Guid): Appointment [0..1]',
                                        '+ListActiveAsync(dietitianId: Guid, date: DateOnly): Appointment[0..*]',
                                        '+Add(appointment: Appointment): void']),
+    'IUserRepository': (R, [], ['+GetAsync(userId: Guid): User [0..1]',
+                                '+GetByEmailAsync(email: string): User [0..1]',
+                                '+GetByResetTokenHashAsync(tokenHash: string): User [0..1]',
+                                '+EmailExistsAsync(email: string): bool',
+                                '+Add(user: User): void']),
+    'IDietitianRepository': (R, [], ['+GetAsync(dietitianId: Guid): Dietitian [0..1]',
+                                     '+Add(dietitian: Dietitian): void']),
+    'ISubscriptionPlanRepository': (R, [], ['+GetAsync(subscriptionPlanId: Guid): SubscriptionPlan [0..1]',
+                                            '+ListActiveAsync(): SubscriptionPlan[0..*]']),
 }
 note_style = 'shape=note, style=filled, fillcolor="#fff8dc", color="#999999", fontsize=10'
 out = ['digraph G {',
@@ -58,15 +69,17 @@ out.append(' subgraph cluster_other {')
 out.append('  label="Diğer repository arayüzleri (EF Core uygulamaları aynı kalıpta: EfNutritionPlanRepository, EfPlanTemplateRepository, …)";')
 out.append('  labeljust=l; style="rounded,dashed"; color="#888888"; fontsize=10; fontname="DejaVu Sans";')
 grid = [['INutritionPlanRepository', 'IPlanTemplateRepository', 'IFoodItemRepository'],
-        ['IMeasurementRepository', 'IMealLogRepository', 'IAppointmentRepository']]
+        ['IMeasurementRepository', 'IMealLogRepository', 'IAppointmentRepository'],
+        ['IUserRepository', 'IDietitianRepository', 'ISubscriptionPlanRepository']]
 for row in grid:
     for n in row:
         s, a, o = nodes[n]
         out.append(f'  {n} [label={box(n, s, a, o)}];')
     out.append('  { rank=same; ' + '; '.join(row) + '; }')
     out.append('  ' + ' -> '.join(row) + ' [style=invis];')
-for i in range(3):
-    out.append(f'  {grid[0][i]} -> {grid[1][i]} [style=invis];')
+for r in range(len(grid) - 1):
+    for i in range(3):
+        out.append(f'  {grid[r][i]} -> {grid[r + 1][i]} [style=invis];')
 out.append(' }')
 # notlar
 out.append(f' n1 [{note_style}, label="Arayüzler Application katmanında (port).\\nDiyetisyen verisi okuyan her metot dietitianId alır:\\nbaşka diyetisyenin kaydı hiç dönmez (IDOR koruması)."];')
