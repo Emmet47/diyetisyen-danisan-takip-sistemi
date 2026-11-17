@@ -1,142 +1,222 @@
 import { useState } from 'react'
-import type { Client, Food, Meal, Plan } from '../api/models'
-import { dateKey, newId, subscriptionFor } from '../demo'
-import type { DemoProps } from './Clients'
-import { Badge, Empty, Field, Message, Modal, Table, Title, useAction, values } from '../ui'
+import { clientsApi } from '../api/clients'
+import { formulaNames, planStatusNames, planTypeNames } from '../api/models'
+import type { ClientSummary, Food, MealDto, MealInput, NutrientTotals, PlanCreated, PlanSummary, PlanType, Restriction, TemplateSummary } from '../api/models'
+import { plansApi, templatesApi } from '../api/plans'
+import { subscriptionApi } from '../api/subscription'
+import { dateLabel, decimal, fullTime, newId, shortTime } from '../format'
+import { FoodPicker } from './Catalog'
+import { Badge, Empty, Field, Message, Modal, Table, Title, Wait, useAction, useLoad, values } from '../ui'
+import type { PageProps } from '../ui'
 
-const states = { Draft: 'Taslak', Published: 'Yayımlandı', Archived: 'Arşivde' }
-const number = (value: number) => value.toLocaleString('tr-TR', { maximumFractionDigits: 1 })
-function totals(meals: Meal[], foods: Food[]) {
-  return meals.flatMap(meal => meal.lines).reduce((sum, line) => {
-    const food = foods.find(row => row.id === line.foodId)
-    if (!food || line.alternativeFor) return sum
-    const factor = food.portionGrams * line.quantity / 100
-    return { kcal: sum.kcal + food.energyKcalPer100g * factor, p: sum.p + food.proteinPer100g * factor, c: sum.c + food.carbsPer100g * factor, f: sum.f + food.fatPer100g * factor }
-  }, { kcal: 0, p: 0, c: 0, f: 0 })
+// ---- Düzenleyicinin kendi modeli ----
+// Plan → öğün → besin satırı (Composite). Alternatif satır, aynı öğündeki bir ana satıra bağlıdır ve toplama katılmaz.
+type Per = { kcal: number; p: number; c: number; f: number }
+type Line = { id: string; foodId: string; foodName: string; portionName: string; quantity: number; alternativeFor?: string; per: Per }
+type EditMeal = { id: string; day: number; name: string; time: string; lines: Line[] }
+type Draft = { title: string; description: string; clientId: string; planType: PlanType; targetKcal: string; energyFormula: string; meals: EditMeal[] }
+
+const dayCount = (type: PlanType) => type === 'Weekly' ? 7 : 1
+const dayNames = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar']
+const dayName = (type: PlanType, day: number) => type === 'Weekly' ? dayNames[day - 1] : day + '. gün'
+const formulaLabel = (value: string | null) => value ? formulaNames[value as keyof typeof formulaNames] ?? value : ''
+
+/** API'den gelen öğünleri düzenleyici modeline çevirir (bir porsiyonun değeri = satır toplamı ÷ porsiyon sayısı). */
+function fromDto(meals: MealDto[]): EditMeal[] {
+  return meals.map(meal => ({
+    id: meal.id, day: meal.dayNo, name: meal.name, time: shortTime(meal.time),
+    lines: meal.items.map(item => ({
+      id: item.id, foodId: item.foodItemId, foodName: item.foodName, portionName: item.portionName, quantity: item.portionCount,
+      alternativeFor: item.alternativeToItemId ?? undefined,
+      per: { kcal: item.totals.energyKcal / item.portionCount, p: item.totals.proteinG / item.portionCount, c: item.totals.carbsG / item.portionCount, f: item.totals.fatG / item.portionCount },
+    })),
+  }))
 }
-function Nutrition({ meals, foods }: { meals: Meal[]; foods: Food[] }) {
-  const sum = totals(meals, foods)
-  const macroKcal = sum.p * 4 + sum.c * 4 + sum.f * 9
-  const part = (value: number, factor: number) => number(value) + ' g' + (macroKcal ? ' (%' + number(value * factor / macroKcal * 100) + ')' : '')
-  return <span className="nutrition"><strong>{number(sum.kcal)} kcal</strong><span>Protein {part(sum.p, 4)}</span><span>Karbonhidrat {part(sum.c, 4)}</span><span>Yağ {part(sum.f, 9)}</span></span>
+/** Düzenleyici modelini API gövdesine çevirir: meals[].items[].alternatives[] */
+function toInput(meals: EditMeal[]): MealInput[] {
+  return meals.map(meal => ({
+    dayNo: meal.day, name: meal.name.trim(), time: fullTime(meal.time),
+    items: meal.lines.filter(line => !line.alternativeFor).map(line => ({
+      foodItemId: line.foodId, portionCount: line.quantity,
+      alternatives: meal.lines.filter(alt => alt.alternativeFor === line.id).map(alt => ({ foodItemId: alt.foodId, portionCount: alt.quantity })),
+    })),
+  }))
 }
-function restrictionNotes(meals: Meal[], client: Client | undefined, foods: Food[]) {
-  const foodIds = new Set(meals.flatMap(meal => meal.lines.map(line => line.foodId)))
-  return (client?.restrictions ?? []).filter(item => foodIds.has(item.foodItemId)).map(item => ({ ...item, foodName: foods.find(food => food.id === item.foodItemId)?.name ?? item.foodName }))
+function perPortion(food: Food): Per {
+  const factor = food.portionGrams / 100
+  return { kcal: food.energyKcalPer100g * factor, p: food.proteinPer100g * factor, c: food.carbsPer100g * factor, f: food.fatPer100g * factor }
+}
+function sum(meals: EditMeal[]): Per {
+  return meals.flatMap(meal => meal.lines).filter(line => !line.alternativeFor).reduce((total, line) => ({
+    kcal: total.kcal + line.per.kcal * line.quantity, p: total.p + line.per.p * line.quantity, c: total.c + line.per.c * line.quantity, f: total.f + line.per.f * line.quantity,
+  }), { kcal: 0, p: 0, c: 0, f: 0 })
+}
+const toTotals = (s: Per): NutrientTotals => {
+  const macro = s.p * 4 + s.c * 4 + s.f * 9
+  const pct = (value: number) => macro ? value / macro * 100 : 0
+  return { energyKcal: s.kcal, proteinG: s.p, carbsG: s.c, fatG: s.f, proteinPercent: pct(s.p * 4), carbsPercent: pct(s.c * 4), fatPercent: pct(s.f * 9) }
 }
 
-function copyMeals(meals: Meal[]): Meal[] {
-  return meals.map(meal => {
-    const lineIds = new Map(meal.lines.map(line => [line.id, newId()]))
-    return {
-      ...meal,
-      id: newId(),
-      lines: meal.lines.map(line => ({
-        ...line,
-        id: lineIds.get(line.id)!,
-        alternativeFor: line.alternativeFor ? lineIds.get(line.alternativeFor) : undefined,
-      })),
-    }
-  })
+/** Enerji ve makro dağılımı (FR-H2). */
+function Nutrition({ totals }: { totals: NutrientTotals }) {
+  const part = (value: number, percent: number) => decimal(value) + ' g (%' + decimal(percent) + ')'
+  return <span className="nutrition"><strong>{decimal(totals.energyKcal)} kcal</strong><span>Protein {part(totals.proteinG, totals.proteinPercent)}</span><span>Karbonhidrat {part(totals.carbsG, totals.carbsPercent)}</span><span>Yağ {part(totals.fatG, totals.fatPercent)}</span></span>
 }
 
-export default function Plans({ demo, update, templates }: DemoProps & { templates: boolean }) {
-  const [display, show] = useState<Plan | null>(null)
-  const [edit, setEdit] = useState<Plan | 'new' | null>(null)
-  const [copy, setCopy] = useState<Plan | null>(null)
+type Row = { id: string; title: string; clientId?: string; planType: PlanType; status?: keyof typeof planStatusNames; extra: string }
+
+export default function Plans({ templates }: PageProps & { templates: boolean }) {
+  const [display, show] = useState<string | null>(null)
+  const [edit, setEdit] = useState<string | 'new' | null>(null)
+  const [copy, setCopy] = useState<Row | null>(null)
   const [notice, setNotice] = useState('')
   const [filter, setFilter] = useState('')
-  const action = useAction()
-  const items = templates ? demo.templates : demo.plans
-  const list = items.filter(item => !filter || item.clientId === filter)
-  const sub = subscriptionFor(demo)
-  function save(plan: Plan) {
-    update(data => {
-      const key = templates ? 'templates' : 'plans'
-      const rows = data[key]
-      return { ...data, [key]: rows.some(row => row.id === plan.id) ? rows.map(row => row.id === plan.id ? plan : row) : [...rows, plan] }
-    })
+  const clients = useLoad(() => clientsApi.list(), 'plan-clients')
+  const sub = useLoad(() => subscriptionApi.get(), 'plan-sub')
+  const list = useLoad<Row[]>(async () => templates
+    ? (await templatesApi.list()).map(item => ({ id: item.id, title: item.name, planType: item.planType, extra: item.description ?? 'Güncellendi: ' + dateLabel(item.updatedAt) }))
+    : (await plansApi.list(filter || undefined)).map(item => ({ id: item.id, title: item.title, clientId: item.clientId, planType: item.planType, status: item.status, extra: item.publishedAt ? 'Yayım: ' + dateLabel(item.publishedAt) : 'Oluşturma: ' + dateLabel(item.createdAt) })),
+  (templates ? 'templates' : 'plans:') + filter)
+  const action = useAction(list.reload)
+  const active = sub.data ? sub.data.status === 'Active' : true
+  const clientName = (id?: string) => clients.data?.find(row => row.id === id)?.fullName ?? '—'
+  function run(task: () => Promise<string>) {
+    setNotice('')
+    void action.run(async () => setNotice(await task()))
+  }
+  function saved(result: PlanCreated | null, text: string) {
     setEdit(null)
+    setNotice(text + (result?.warnings.length ? ' Uyarılar: ' + result.warnings.join(' ') : ''))
+    list.reload()
   }
-  function publish(plan: Plan) {
-    void action.run(() => {
-      const client = demo.clients.find(row => row.id === plan.clientId)
-      if (!client?.isActive) throw new Error('Plan yayımlamak için danışan aktif olmalı.')
-      const allergies = restrictionNotes(plan.meals, client, demo.foods).filter(item => item.type === 'Allergy')
-      if (allergies.length) throw new Error('Plan alerjen içeriyor: ' + allergies.map(item => item.foodName).join(', '))
-      const date = dateKey()
-      update(data => ({ ...data, plans: data.plans.map(row => row.id === plan.id ? { ...row, state: 'Published', publishedDate: date } : row.clientId === plan.clientId && row.state === 'Published' ? { ...row, state: 'Archived', archivedDate: date } : row) }))
-      setNotice('Plan yayımlandı.')
-    })
-  }
-  return <><Title title={templates ? 'Plan şablonları' : 'Beslenme planları'} subtitle={templates ? 'Yeniden kullanılabilir öğün şablonları oluştur ve danışana kopyala.' : 'Günlük ve haftalık planları hazırla, yayımla ve arşivle.'} action={<button className="button primary" disabled={!templates && sub.status !== 'Active'} onClick={() => setEdit('new')}>{templates ? '＋ Şablon oluştur' : '＋ Plan oluştur'}</button>} />
-    <Message type="info">{!templates && sub.status !== 'Active' && 'Yeni plan oluşturmak için aboneliğini yenile.'}</Message><Message type="success">{notice}</Message><Message>{action.error}</Message>
-    <section className="panel">{!templates && <div className="toolbar"><select aria-label="Danışana göre filtrele" value={filter} onChange={event => setFilter(event.target.value)}><option value="">Tüm danışanlar</option>{demo.clients.map(client => <option key={client.id} value={client.id}>{client.fullName}</option>)}</select></div>}
-      <Table heads={templates ? ['Şablon', 'Süre', 'Öğün', ''] : ['Plan', 'Danışan', 'Süre', 'Durum', '']}>{list.map(plan => <tr key={plan.id}><td><strong>{plan.title}</strong></td>{!templates && <td>{demo.clients.find(row => row.id === plan.clientId)?.fullName ?? '—'}</td>}<td>{plan.days} gün</td>{templates ? <td>{plan.meals.length}</td> : <td><Badge tone={plan.state === 'Published' ? 'green' : plan.state === 'Draft' ? 'amber' : 'gray'}>{states[plan.state]}</Badge></td>}<td className="row-actions">
-        <button className="text-button" onClick={() => show(plan)}>Görüntüle</button>{(templates || plan.state === 'Draft') && <><button className="text-button" onClick={() => setEdit(plan)}>Düzenle</button><button className="text-button danger-text" onClick={() => { if (confirm(plan.title + ' silinsin mi?')) update(data => ({ ...data, [templates ? 'templates' : 'plans']: items.filter(row => row.id !== plan.id) })) }}>Sil</button></>}
-        {templates ? <button className="text-button" disabled={sub.status !== 'Active'} onClick={() => setCopy(plan)}>Danışana kopyala</button> : plan.state === 'Draft' ? <button className="text-button" disabled={action.busy} onClick={() => publish(plan)}>Yayımla</button> : plan.state === 'Published' && <button className="text-button" onClick={() => { if (confirm(plan.title + ' arşivlensin mi?')) save({ ...plan, state: 'Archived', archivedDate: dateKey() }) }}>Arşivle</button>}
-      </td></tr>)}</Table>{!list.length && <Empty>Kayıt bulunamadı.</Empty>}</section>
-    {display && <Modal title={display.title} close={() => show(null)}><PlanReview plan={display} foods={demo.foods} /></Modal>}
-    {edit && <PlanEditor original={edit === 'new' ? undefined : edit} templates={templates} foods={demo.foods} clients={demo.clients} close={() => setEdit(null)} save={save} />}
-    {copy && <Modal title="Şablonu danışana kopyala" close={() => setCopy(null)}><form className="form" onSubmit={event => {
-      const data = values(event)
-      const client = demo.clients.find(row => row.id === data.clientId)
-      if (!client?.isActive || !data.title.trim()) return
-      const { days, meals, targetKcal, energyFormula } = copy
-      const draft: Plan = { id: newId(), clientId: client.id, title: data.title.trim(), days, meals: copyMeals(meals), targetKcal, energyFormula, state: 'Draft' }
-      update(state => ({ ...state, plans: [...state.plans, draft] }))
-      const warnings = restrictionNotes(draft.meals, client, demo.foods)
-      setNotice('Taslak plan oluşturuldu.' + (warnings.length ? ' Kısıtlı besinler: ' + warnings.map(row => row.foodName).join(', ') : ''))
-      setCopy(null)
-    }}><Field label="Danışan"><select name="clientId" required defaultValue=""><option value="">Danışan seç</option>{demo.clients.filter(row => row.isActive).map(row => <option key={row.id} value={row.id}>{row.fullName}</option>)}</select></Field><Field label="Plan adı"><input name="title" defaultValue={copy.title} maxLength={100} required /></Field><div className="form-actions"><button className="button primary">Taslak oluştur</button></div></form></Modal>}
+  return <><Title title={templates ? 'Plan şablonları' : 'Beslenme planları'} subtitle={templates ? 'Yeniden kullanılabilir öğün şablonları oluştur ve danışana bağımsız kopya olarak aktar.' : 'Günlük ve haftalık planları hazırla, yayımla ve arşivle.'} action={<button className="button primary" disabled={!templates && !active} onClick={() => setEdit('new')}>{templates ? '＋ Şablon oluştur' : '＋ Plan oluştur'}</button>} />
+    <Message type="info">{!active && (templates ? 'Aboneliğin aktif değilken şablondan yeni plan oluşturulamaz.' : 'Yeni plan oluşturmak için aboneliğini yenile.')}</Message><Message type="success">{notice}</Message><Message>{action.error}</Message>
+    <section className="panel">{!templates && <div className="toolbar"><select aria-label="Danışana göre filtrele" value={filter} onChange={event => setFilter(event.target.value)}><option value="">Tüm danışanlar</option>{clients.data?.map(client => <option key={client.id} value={client.id}>{client.fullName}</option>)}</select></div>}
+      {!list.data ? <Wait error={list.error} reload={list.reload} /> : <>
+      <Table heads={templates ? ['Şablon', 'Süre', 'Açıklama', ''] : ['Plan', 'Danışan', 'Süre', 'Durum', '']}>{list.data.map(plan => <tr key={plan.id}><td><strong>{plan.title}</strong>{!templates && <small className="cell-note">{plan.extra}</small>}</td>{!templates && <td>{clientName(plan.clientId)}</td>}<td>{planTypeNames[plan.planType]}</td>{templates ? <td>{plan.extra}</td> : <td><Badge tone={plan.status === 'Published' ? 'green' : plan.status === 'Draft' ? 'amber' : 'gray'}>{planStatusNames[plan.status!]}</Badge></td>}<td className="row-actions">
+        <button className="text-button" onClick={() => show(plan.id)}>Görüntüle</button>{(templates || plan.status === 'Draft') && <><button className="text-button" onClick={() => setEdit(plan.id)}>Düzenle</button><button className="text-button danger-text" disabled={action.busy} onClick={() => { if (confirm(plan.title + ' silinsin mi?')) run(async () => { await (templates ? templatesApi.remove(plan.id) : plansApi.remove(plan.id)); return plan.title + ' silindi.' }) }}>Sil</button></>}
+        {templates ? <button className="text-button" disabled={!active} onClick={() => setCopy(plan)}>Danışana kopyala</button>
+          : plan.status === 'Draft' ? <button className="text-button" disabled={action.busy} onClick={() => run(async () => { await plansApi.publish(plan.id); return 'Plan yayımlandı. Danışanın varsa önceki yayımlanmış planı arşivlendi ve danışana bildirim gönderildi.' })}>Yayımla</button>
+          : plan.status === 'Published' && <button className="text-button" disabled={action.busy} onClick={() => { if (confirm(plan.title + ' arşivlensin mi?')) run(async () => { await plansApi.archive(plan.id); return 'Plan arşivlendi.' }) }}>Arşivle</button>}
+      </td></tr>)}</Table>{!list.data.length && <Empty>Kayıt bulunamadı.</Empty>}</>}</section>
+    {display && <PlanReviewModal id={display} templates={templates} clientName={clientName} close={() => show(null)} />}
+    {edit && <PlanEditor id={edit === 'new' ? undefined : edit} templates={templates} clients={clients.data ?? []} close={() => setEdit(null)} saved={saved} />}
+    {copy && <CopyForm template={copy} clients={clients.data ?? []} close={() => setCopy(null)} copied={result => { setCopy(null); setNotice('Şablonun bağımsız kopyası taslak plan olarak oluşturuldu; özgün şablon değişmedi.' + (result.warnings.length ? ' Uyarılar: ' + result.warnings.join(' ') : '')) }} />}
   </>
 }
 
-function PlanReview({ plan, foods }: { plan: Plan; foods: Food[] }) {
-  return <div className="stack">{plan.targetKcal && <p>Günlük hedef {plan.targetKcal} kcal{plan.energyFormula ? ' · ' + plan.energyFormula : ''}</p>}<Nutrition meals={plan.meals} foods={foods} />{Array.from({ length: plan.days }, (_, index) => index + 1).map(day => {
-    const meals = plan.meals.filter(item => item.day === day)
-    return <section className="record" key={day}><h3>{day}. gün</h3><Nutrition meals={meals} foods={foods} />{meals.map(meal => <div className="meal-preview" key={meal.id}><strong>{meal.time} · {meal.name}</strong><Nutrition meals={[meal]} foods={foods} /><ul>{meal.lines.map(line => <li key={line.id}>{foods.find(food => food.id === line.foodId)?.name} · {line.quantity} porsiyon{line.alternativeFor ? ' (alternatif)' : ''}</li>)}</ul></div>)}</section>
-  })}</div>
+function CopyForm({ template, clients, close, copied }: { template: Row; clients: ClientSummary[]; close: () => void; copied: (result: PlanCreated) => void }) {
+  const action = useAction()
+  return <Modal title="Şablonu danışana kopyala" close={close}><form className="form" onSubmit={event => {
+    const data = values(event)
+    void action.run(async () => copied(await templatesApi.copyToClient(template.id, data.clientId, data.title.trim() || null)))
+  }}><p className="muted">Şablonun bağımsız kopyası taslak plan olur (Prototype). Kopyada yaptığın değişiklik şablonu etkilemez.</p>
+    <Field label="Danışan"><select name="clientId" required defaultValue=""><option value="">Danışan seç</option>{clients.filter(row => row.isActive).map(row => <option key={row.id} value={row.id}>{row.fullName}</option>)}</select></Field>
+    <Field label="Plan adı"><input name="title" defaultValue={template.title} maxLength={100} /></Field>
+    <Message>{action.error}</Message><div className="form-actions"><button className="button primary" disabled={action.busy}>Taslak oluştur</button></div></form></Modal>
 }
-function PlanEditor({ original, templates, clients, foods, close, save }: { original?: Plan; templates: boolean; clients: Client[]; foods: Food[]; close: () => void; save: (plan: Plan) => void }) {
+
+function PlanReviewModal({ id, templates, clientName, close }: { id: string; templates: boolean; clientName: (id?: string) => string; close: () => void }) {
+  const data = useLoad<PlanSummary | TemplateSummary>(() => templates ? templatesApi.get(id) : plansApi.get(id), 'review:' + id)
+  const plan = data.data
+  const title = plan ? 'name' in plan ? plan.name : plan.title : 'Plan'
+  return <Modal title={title} close={close}>{!plan ? <Wait error={data.error} reload={data.reload} /> : <div className="stack">
+    {'status' in plan && <p>{clientName(plan.clientId)} · {planStatusNames[plan.status]} · {planTypeNames[plan.planType]}{plan.targetKcal ? ' · Günlük hedef ' + plan.targetKcal + ' kcal' : ''}{plan.energyFormula ? ' · ' + formulaLabel(plan.energyFormula) : ''}</p>}
+    {'description' in plan && plan.description && <p className="muted">{plan.description}</p>}
+    <Nutrition totals={plan.totals} />
+    {plan.days.map(day => { const meals = plan.meals.filter(meal => meal.dayNo === day.dayNo)
+      return <section className="record" key={day.dayNo}><h3>{dayName(plan.planType, day.dayNo)}</h3><Nutrition totals={day.totals} />{meals.map(meal => <div className="meal-preview" key={meal.id}><strong>{shortTime(meal.time)} · {meal.name}</strong><Nutrition totals={meal.totals} /><ul>{meal.items.map(item => <li key={item.id}>{item.foodName} · {decimal(item.portionCount, 2)} × {item.portionName} ({decimal(item.grams)} g){item.isAlternative ? ' (alternatif, toplama katılmaz)' : ''}</li>)}</ul></div>)}</section>
+    })}
+    <p className="muted">{plan.disclaimer}</p>
+  </div>}</Modal>
+}
+
+function PlanEditor({ id, templates, clients, close, saved }: { id?: string; templates: boolean; clients: ClientSummary[]; close: () => void; saved: (result: PlanCreated | null, text: string) => void }) {
+  const original = useLoad<PlanSummary | TemplateSummary | null>(() => !id ? Promise.resolve(null) : templates ? templatesApi.get(id) : plansApi.get(id), 'editor:' + id)
+  if (id && !original.data) return <Modal title="Düzenleyici" close={close}><Wait error={original.error} reload={original.reload} /></Modal>
+  const source = original.data
+  const draft: Draft = !source
+    ? { title: '', description: '', clientId: '', planType: 'Daily', targetKcal: '', energyFormula: '', meals: [] }
+    : 'name' in source
+      ? { title: source.name, description: source.description ?? '', clientId: '', planType: source.planType, targetKcal: '', energyFormula: '', meals: fromDto(source.meals) }
+      : { title: source.title, description: '', clientId: source.clientId, planType: source.planType, targetKcal: source.targetKcal ? String(source.targetKcal) : '', energyFormula: source.energyFormula ?? '', meals: fromDto(source.meals) }
+  return <EditorSteps id={id} initial={draft} templates={templates} clients={clients} close={close} saved={saved} />
+}
+
+/** Plan adım adım kurulur ve kaydetmeden önce özetlenir (Builder, sd-2). */
+function EditorSteps({ id, initial, templates, clients, close, saved }: { id?: string; initial: Draft; templates: boolean; clients: ClientSummary[]; close: () => void; saved: (result: PlanCreated | null, text: string) => void }) {
   const [step, setStep] = useState(1)
-  const [plan, setPlan] = useState<Plan>(() => original ? structuredClone(original) : { id: newId(), title: '', days: 1, state: 'Draft', meals: [] })
+  const [plan, setPlan] = useState<Draft>(initial)
   const [error, setError] = useState('')
-  const warnings = restrictionNotes(plan.meals, clients.find(row => row.id === plan.clientId), foods)
-  function patch(meal: Meal) { setPlan(data => ({ ...data, meals: data.meals.map(row => row.id === meal.id ? meal : row) })) }
+  const [adding, setAdding] = useState<{ mealId: string; quantity: string; alternative: string }>({ mealId: '', quantity: '1', alternative: '' })
+  const action = useAction()
+  const client = useLoad(() => !templates && plan.clientId ? clientsApi.get(plan.clientId) : Promise.resolve(null), 'editor-client:' + plan.clientId)
+  const restrictions: Restriction[] = client.data?.restrictions ?? []
+  const used = new Set(plan.meals.flatMap(meal => meal.lines.map(line => line.foodId)))
+  const warnings = restrictions.filter(item => used.has(item.foodItemId))
+  const days = dayCount(plan.planType)
+  function patch(meal: EditMeal) { setPlan(data => ({ ...data, meals: data.meals.map(row => row.id === meal.id ? meal : row) })) }
+  function addFood(meal: EditMeal, food: Food) {
+    const quantity = Number(adding.quantity.replace(',', '.'))
+    if (!(quantity >= 0.01 && quantity <= 20)) { setError('Porsiyon sayısı 0,01 ile 20 arasında olmalı.'); return }
+    setError('')
+    patch({ ...meal, lines: [...meal.lines, { id: newId(), foodId: food.id!, foodName: food.name, portionName: food.portionName, quantity, alternativeFor: adding.mealId === meal.id && adding.alternative ? adding.alternative : undefined, per: perPortion(food) }] })
+  }
+  function save() {
+    void action.run(async () => {
+      const meals = toInput(plan.meals)
+      if (templates) {
+        const input = { name: plan.title, description: plan.description.trim() || null, planType: plan.planType, meals }
+        if (id) await templatesApi.update(id, input)
+        else await templatesApi.create(input)
+        saved(null, 'Şablon kaydedildi.')
+      } else {
+        const input = { title: plan.title, planType: plan.planType, targetKcal: plan.targetKcal ? Number(plan.targetKcal) : null, energyFormula: plan.energyFormula || null, meals }
+        const result = id ? await plansApi.update(id, input) : await plansApi.create({ ...input, clientId: plan.clientId })
+        saved(result, 'Taslak plan kaydedildi.')
+      }
+    })
+  }
   return <Modal title={templates ? 'Şablon düzenleyici' : 'Beslenme planı düzenleyici'} close={close}>
     <div className="steps" aria-label="Plan adımları">{['Plan bilgileri', 'Öğünler', 'Özet'].map((label, index) => <span className={step === index + 1 ? 'active' : ''} key={label}>{label}</span>)}</div>
     {step === 1 && <form className="form" onSubmit={event => {
       const data = values(event)
+      const planType = data.planType as PlanType
       if (!data.title.trim()) return
-      if (plan.meals.some(meal => meal.day > Number(data.days)) && !confirm('Kapsam dışındaki günlerin öğünleri silinsin mi?')) return
-      setPlan({ ...plan, title: data.title.trim(), clientId: data.clientId || undefined, days: Number(data.days), targetKcal: data.targetKcal ? Number(data.targetKcal) : undefined, energyFormula: data.energyFormula || undefined, meals: plan.meals.filter(meal => meal.day <= Number(data.days)) })
+      if (plan.meals.some(meal => meal.day > dayCount(planType)) && !confirm('Kapsam dışındaki günlerin öğünleri silinsin mi?')) return
+      setPlan({ ...plan, title: data.title.trim(), description: data.description ?? '', clientId: id ? plan.clientId : data.clientId ?? '', planType, targetKcal: data.targetKcal ?? '', energyFormula: data.energyFormula ?? '', meals: plan.meals.filter(meal => meal.day <= dayCount(planType)) })
       setStep(2)
     }}><Field label={templates ? 'Şablon adı' : 'Plan adı'}><input name="title" defaultValue={plan.title} required maxLength={100} /></Field>
-      {!templates && <Field label="Danışan"><select name="clientId" defaultValue={plan.clientId ?? ''} required><option value="">Danışan seç</option>{clients.filter(row => row.isActive || row.id === plan.clientId).map(row => <option key={row.id} value={row.id}>{row.fullName}</option>)}</select></Field>}
-      <Field label="Süre"><select name="days" defaultValue={plan.days}><option value="1">Günlük</option><option value="7">Haftalık</option></select></Field>
-      {!templates && <div className="form-grid"><Field label="Günlük enerji hedefi (kcal)"><input name="targetKcal" type="number" min="1" defaultValue={plan.targetKcal} /></Field><Field label="Enerji formülü"><select name="energyFormula" defaultValue={plan.energyFormula ?? ''}><option value="">Seçim yok</option><option value="Mifflin–St Jeor">Mifflin–St Jeor</option><option value="Harris–Benedict">Harris–Benedict</option></select></Field></div>}
+      {templates && <Field label="Açıklama"><textarea name="description" defaultValue={plan.description} maxLength={500} /></Field>}
+      {!templates && <Field label="Danışan"><select name="clientId" defaultValue={plan.clientId} required disabled={!!id}><option value="">Danışan seç</option>{clients.filter(row => row.isActive || row.id === plan.clientId).map(row => <option key={row.id} value={row.id}>{row.fullName}</option>)}</select></Field>}
+      <Field label="Süre"><select name="planType" defaultValue={plan.planType}><option value="Daily">Günlük (1 gün)</option><option value="Weekly">Haftalık (7 gün)</option></select></Field>
+      {!templates && <div className="form-grid"><Field label="Günlük enerji hedefi (kcal, 800–6000)"><input name="targetKcal" type="number" min="800" max="6000" defaultValue={plan.targetKcal} /></Field><Field label="Enerji formülü"><select name="energyFormula" defaultValue={plan.energyFormula}><option value="">Seçim yok</option>{Object.entries(formulaNames).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field></div>}
+      {!templates && <p className="muted">Hedef enerjiyi “Enerji hesabı” sayfasında danışanın son ölçümüyle hesaplayabilirsin.</p>}
       <button className="button primary">Öğünlere geç</button></form>}
     {step === 2 && <div className="stack">
       {plan.meals.map(meal => <section className="record stack" key={meal.id}>
-        <div className="toolbar flush"><Field label="Gün"><select value={meal.day} onChange={event => patch({ ...meal, day: Number(event.target.value) })}>{Array.from({ length: plan.days }, (_, i) => <option value={i + 1} key={i}>{i + 1}. gün</option>)}</select></Field><Field label="Öğün adı"><input value={meal.name} maxLength={60} onChange={event => patch({ ...meal, name: event.target.value })} /></Field><Field label="Saat"><input type="time" value={meal.time} onChange={event => patch({ ...meal, time: event.target.value })} /></Field><button className="text-button danger-text" onClick={() => setPlan({ ...plan, meals: plan.meals.filter(row => row.id !== meal.id) })}>Öğünü sil</button></div>
-        {meal.lines.map(line => <div className="list-line" key={line.id}><span>{foods.find(food => food.id === line.foodId)?.name} · {line.quantity} porsiyon{line.alternativeFor ? ' (alternatif)' : ''}</span><button className="text-button" onClick={() => patch({ ...meal, lines: meal.lines.filter(row => row.id !== line.id && row.alternativeFor !== line.id) })}>Kaldır</button></div>)}
-        <form className="toolbar flush" onSubmit={event => {
-          const data = values(event)
-          patch({ ...meal, lines: [...meal.lines, { id: newId(), foodId: data.food, quantity: Number(data.quantity), alternativeFor: data.alternative || undefined }] })
-          event.currentTarget.reset()
-        }}><Field label="Besin"><select name="food" defaultValue="" required><option value="">Besin seç</option>{foods.map(food => <option key={food.id} value={food.id}>{food.name}</option>)}</select></Field><Field label="Porsiyon"><input name="quantity" type="number" min=".01" step=".01" defaultValue="1" required /></Field><Field label="Ana besin"><select name="alternative"><option value="">Alternatif değil</option>{meal.lines.filter(line => !line.alternativeFor).map(line => <option value={line.id} key={line.id}>{foods.find(food => food.id === line.foodId)?.name}</option>)}</select></Field><button className="button secondary">Besin ekle</button></form>
-        <Nutrition meals={[meal]} foods={foods} />
+        <div className="toolbar flush"><Field label="Gün"><select value={meal.day} onChange={event => patch({ ...meal, day: Number(event.target.value) })}>{Array.from({ length: days }, (_, i) => <option value={i + 1} key={i}>{dayName(plan.planType, i + 1)}</option>)}</select></Field><Field label="Öğün adı"><input value={meal.name} maxLength={50} onChange={event => patch({ ...meal, name: event.target.value })} /></Field><Field label="Saat"><input type="time" value={meal.time} onChange={event => patch({ ...meal, time: event.target.value })} /></Field><button className="text-button danger-text" onClick={() => setPlan({ ...plan, meals: plan.meals.filter(row => row.id !== meal.id) })}>Öğünü sil</button></div>
+        {meal.lines.map(line => <div className="list-line" key={line.id}><span>{line.foodName} · {decimal(line.quantity, 2)} × {line.portionName}{line.alternativeFor ? ' (alternatif: ' + (meal.lines.find(row => row.id === line.alternativeFor)?.foodName ?? '') + ')' : ''}</span><button className="text-button" onClick={() => patch({ ...meal, lines: meal.lines.filter(row => row.id !== line.id && row.alternativeFor !== line.id) })}>Kaldır</button></div>)}
+        <div className="toolbar flush"><Field label="Porsiyon sayısı"><input type="number" min=".01" max="20" step=".01" value={adding.mealId === meal.id ? adding.quantity : '1'} onChange={event => setAdding({ mealId: meal.id, quantity: event.target.value, alternative: adding.mealId === meal.id ? adding.alternative : '' })} /></Field><Field label="Ana besin"><select value={adding.mealId === meal.id ? adding.alternative : ''} onChange={event => setAdding({ mealId: meal.id, quantity: adding.mealId === meal.id ? adding.quantity : '1', alternative: event.target.value })}><option value="">Alternatif değil</option>{meal.lines.filter(line => !line.alternativeFor).map(line => <option value={line.id} key={line.id}>{line.foodName} yerine</option>)}</select></Field></div>
+        <FoodPicker label="Besin ekle" pick={food => addFood(meal, food)} />
+        <Nutrition totals={toTotals(sum([meal]))} />
       </section>)}
       <button className="button secondary" onClick={() => setPlan({ ...plan, meals: [...plan.meals, { id: newId(), day: 1, name: '', time: '08:30', lines: [] }] })}>＋ Öğün ekle</button><Message>{error}</Message>
       <div className="form-actions"><button className="button secondary" onClick={() => setStep(1)}>Geri</button><button className="button primary" onClick={() => {
-        if (!plan.meals.length || Array.from({ length: plan.days }, (_, i) => i + 1).some(day => !plan.meals.some(meal => meal.day === day)) || plan.meals.some(meal => !meal.name.trim() || !meal.time || !meal.lines.some(line => !line.alternativeFor))) { setError('Her gün için öğün ekle. Her öğüne bir ad, saat ve en az bir ana besin gir.'); return }
+        if (!plan.meals.length || Array.from({ length: days }, (_, i) => i + 1).some(day => !plan.meals.some(meal => meal.day === day)) || plan.meals.some(meal => !meal.name.trim() || !meal.time || !meal.lines.some(line => !line.alternativeFor))) { setError('Her gün için öğün ekle. Her öğüne bir ad, saat ve en az bir ana besin gir.'); return }
         setError(''); setStep(3)
       }}>Özeti incele</button></div>
     </div>}
-    {step === 3 && <div className="stack"><PlanReview plan={plan} foods={foods} />
-      {warnings.map(row => <Message key={row.foodItemId} type={row.type === 'Allergy' ? 'error' : 'info'}>{row.foodName} · {row.type === 'Allergy' ? 'Alerji. Kaydetmeden önce çıkar.' : 'Danışan bu besini sevmiyor.'}</Message>)}
-      <div className="form-actions"><button className="button secondary" onClick={() => setStep(2)}>Geri</button><button className="button primary" disabled={warnings.some(row => row.type === 'Allergy')} onClick={() => save(plan)}>Kaydet</button></div>
+    {step === 3 && <div className="stack">
+      <p>{plan.title}{!templates && plan.clientId ? ' · ' + (clients.find(row => row.id === plan.clientId)?.fullName ?? '') : ''} · {planTypeNames[plan.planType]}{plan.targetKcal ? ' · Hedef ' + plan.targetKcal + ' kcal' : ''}{plan.energyFormula ? ' · ' + formulaLabel(plan.energyFormula) : ''}</p>
+      <Nutrition totals={toTotals(sum(plan.meals))} />
+      {Array.from({ length: days }, (_, i) => i + 1).map(day => { const meals = plan.meals.filter(meal => meal.day === day).sort((a, b) => a.time.localeCompare(b.time))
+        return <section className="record" key={day}><h3>{dayName(plan.planType, day)}</h3><Nutrition totals={toTotals(sum(meals))} />{meals.map(meal => <div className="meal-preview" key={meal.id}><strong>{meal.time} · {meal.name}</strong><ul>{meal.lines.map(line => <li key={line.id}>{line.foodName} · {decimal(line.quantity, 2)} × {line.portionName}{line.alternativeFor ? ' (alternatif)' : ''}</li>)}</ul></div>)}</section>
+      })}
+      {warnings.map(row => <Message key={row.foodItemId} type={row.type === 'Allergy' ? 'error' : 'info'}>{row.foodName} · {row.type === 'Allergy' ? 'Danışanın alerji listesinde. Kaydetmeden önce çıkar.' : 'Danışan bu besini sevmiyor.'}</Message>)}
+      <p className="muted">Toplamlar tahminidir; kayıttan sonra sunucunun hesapladığı değerler geçerlidir. Hesaplamalar profesyonel değerlendirme yerine geçmez.</p>
+      <Message>{action.error}</Message>
+      <div className="form-actions"><button className="button secondary" onClick={() => setStep(2)}>Geri</button><button className="button primary" disabled={action.busy || warnings.some(row => row.type === 'Allergy')} onClick={save}>{action.busy ? 'Kaydediliyor…' : 'Kaydet'}</button></div>
     </div>}
   </Modal>
 }

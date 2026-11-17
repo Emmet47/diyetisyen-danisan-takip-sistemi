@@ -1,15 +1,22 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { ApiError } from './api/http'
+import type { Session } from './api/models'
 
+/** Her sayfanın aldığı ortak özellikler. */
+export type PageProps = { session: Session }
+
+/**
+ * Hatayı ekranda gösterilecek Türkçe metne çevirir. API'nin ProblemDetails "detail" alanı
+ * (ör. "Bu saat az önce doldu", paket limiti) doğrudan gösterilir; yoksa durum koduna göre
+ * hazır metin kullanılır (api/http.ts). 400'deki errors listesi de eklenir.
+ */
 export function errorText(error: unknown) {
   if (error instanceof ApiError) {
-    if (error.status === 403) return 'Bu işlem için yetkiniz yok.'
-    if (error.status === 429) return 'Çok fazla deneme. Biraz sonra tekrar deneyin.'
-    const fields = Object.values(error.errors ?? {}).flat()
+    const fields = Object.values(error.errors ?? {}).flat().filter(text => text !== error.message)
     return [error.message, ...fields].filter(Boolean).join(' ') || 'İstek tamamlanamadı.'
   }
-  if (error instanceof TypeError || error instanceof SyntaxError) return 'API’ye ulaşılamadı. Sunucuyu kontrol edip tekrar deneyin.'
+  if (error instanceof TypeError || error instanceof SyntaxError) return 'API’ye ulaşılamadı. Sunucuyu kontrol edip tekrar dene.'
   return error instanceof Error ? error.message : 'Beklenmeyen bir hata oluştu.'
 }
 

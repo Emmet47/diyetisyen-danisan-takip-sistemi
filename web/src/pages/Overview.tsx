@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
-import { api } from '../api/http'
-import type { Client, Dietitian, Package, Paged, Subscription } from '../api/models'
-import { dateKey, dateLabel, initials, moveDate, subscriptionFor, timeLabel } from '../demo'
-import type { DemoProps } from './Clients'
+import { adminApi } from '../api/admin'
+import { appointmentsApi } from '../api/appointments'
+import { clientsApi } from '../api/clients'
+import { measurementsApi } from '../api/measurements'
+import { appointmentLabels, goalNames } from '../api/models'
+import { plansApi } from '../api/plans'
+import { subscriptionApi } from '../api/subscription'
+import { dateKey, dateLabel, dayStartUtc, initials, moveDate, timeLabel } from '../format'
 import { ClientIdentity } from './Clients'
 import { Badge, Empty, Table, Title, Wait, useLoad } from '../ui'
-
-export const appointmentLabels = { Requested: 'Talep edildi', Confirmed: 'Onaylandı', Completed: 'Tamamlandı', Cancelled: 'İptal' }
+import type { PageProps } from '../ui'
 export function Trend({ data, target, unit = 'kg' }: { data: { date: string; value: number }[]; target?: number; unit?: string }) {
   const canvas = useRef<HTMLCanvasElement>(null)
   useEffect(() => {
@@ -65,46 +68,52 @@ export function Trend({ data, target, unit = 'kg' }: { data: { date: string; val
 function Metric({ label, value, foot, symbol, tone }: { label: string; value: string | number; foot: string; symbol: string; tone: string }) {
   return <article className="panel metric"><div><p>{label}</p><strong>{value}</strong><small>{foot}</small></div><span className={'metric-icon ' + tone} aria-hidden="true">{symbol}</span></article>
 }
-export default function Overview({ session, demo, navigate }: DemoProps & { navigate: (page: string) => void }) {
-  const clients = useLoad(() => session.demo || session.role === 'Admin' ? Promise.resolve([]) : api.get<Client[]>('/clients'), 'overview-clients')
-  const sub = useLoad(() => session.demo || session.role === 'Admin' ? Promise.resolve(null) : api.get<Subscription>('/subscription'), 'overview-sub')
-  const accounts = useLoad(() => session.demo || session.role !== 'Admin' ? Promise.resolve(null) : api.get<Paged<Dietitian>>('/admin/dietitians?page=1&pageSize=20'), 'overview-admin')
-  const packages = useLoad(() => session.demo || session.role !== 'Admin' ? Promise.resolve([]) : api.get<Package[]>('/admin/subscription-plans'), 'overview-packages')
+export default function Overview({ session, navigate }: PageProps & { navigate: (page: string) => void }) {
+  const admin = session.role === 'Admin'
   const today = dateKey()
-  const data = session.demo ? demo.clients : clients.data
-  const membership = session.demo ? subscriptionFor(demo) : sub.data
-  const appointments = demo.appointments.filter(item => dateKey(new Date(item.startsAt)) === today && item.status !== 'Cancelled').sort((a, b) => a.startsAt.localeCompare(b.startsAt))
+  const clients = useLoad(() => admin ? Promise.resolve(null) : clientsApi.list(), 'overview-clients')
+  const sub = useLoad(() => admin ? Promise.resolve(null) : subscriptionApi.get(), 'overview-sub')
+  const plans = useLoad(() => admin ? Promise.resolve(null) : plansApi.list(), 'overview-plans')
+  const agenda = useLoad(() => admin ? Promise.resolve(null) : appointmentsApi.list(dayStartUtc(today), dayStartUtc(moveDate(today, 1))), 'overview-agenda')
+  const accounts = useLoad(() => !admin ? Promise.resolve(null) : adminApi.dietitians({ page: 1, pageSize: 20 }), 'overview-admin')
+  const packages = useLoad(() => !admin ? Promise.resolve(null) : adminApi.packages(), 'overview-packages')
   const [period, setPeriod] = useState(42)
   const [trendClient, setTrendClient] = useState('')
-  const selectedClient = demo.clients.find(row => row.id === trendClient) ?? demo.clients[0]
-  const trend = demo.measurements.filter(item => item.clientId === selectedClient?.id && item.date >= moveDate(today, -period)).sort((a, b) => a.date.localeCompare(b.date))
-  const admin = session.role === 'Admin'
+  const data = clients.data
+  const selectedClient = data?.find(row => row.id === trendClient) ?? data?.find(row => row.isActive) ?? data?.[0]
+  const history = useLoad(() => selectedClient ? measurementsApi.list(selectedClient.id) : Promise.resolve(null), 'overview-trend:' + (selectedClient?.id ?? ''))
+  const trend = (history.data?.items ?? []).filter(item => item.measuredOn >= moveDate(today, -period))
+  const target = history.data?.targetWeightKg ?? undefined
+  const appointments = (agenda.data ?? []).filter(item => item.status !== 'Cancelled').sort((a, b) => a.startsAt.localeCompare(b.startsAt))
+  const membership = sub.data
   const title = admin ? 'Yönetim özeti' : 'Genel bakış'
-  const fullDate = new Intl.DateTimeFormat('tr-TR', { dateStyle: 'full', timeZone: 'Europe/Istanbul' }).format(new Date())
-  const accountCount = session.demo ? demo.dietitians.length : accounts.data?.totalCount
-  const packageCount = (session.demo ? demo.packages : packages.data)?.filter(item => item.isActive).length
+  const fullDate = new Intl.DateTimeFormat('tr-TR', { dateStyle: 'full', timeZone: 'Europe/Istanbul' }).format(new Date(today + 'T12:00:00Z'))
+  const accountCount = accounts.data?.totalCount
+  const packageCount = packages.data?.filter(item => item.isActive).length
   return <>
     <Title title={title} subtitle={admin ? 'Diyetisyen hesaplarını ve abonelik paketlerini takip et.' : 'Danışanlarının durumunu ve günün programını takip et.'} action={<span className="date-pill">{fullDate}</span>} />
     {admin ? <><div className="metrics admin-metrics"><Metric label="Diyetisyen hesabı" value={accountCount ?? '—'} foot="Tüm hesaplar" symbol="♙" tone="green" /><Metric label="Satıştaki paketler" value={packageCount ?? '—'} foot="Abonelik planları" symbol="▤" tone="sand" /></div>{accounts.error && <Wait error={accounts.error} reload={accounts.reload} />}{packages.error && <Wait error={packages.error} reload={packages.reload} />}<section className="panel padded"><h2>Yönetim</h2><div className="quick-grid">{[['dietitians', 'Diyetisyen hesapları'], ['packages', 'Abonelik paketleri'], ['usage', 'Paket kullanımı'], ['audit', 'Denetim kayıtları']].map(([id, label]) => <button className="button secondary" key={id} onClick={() => navigate(id)}>{label} →</button>)}</div></section></> : <>
+      {membership?.usage.nearLimit && <p className="message info">Paket kullanımı {membership.usage.activeClients}/{membership.usage.maxClients}. Aktif danışan limitine yaklaştınız.</p>}
       <div className="metrics">
         <Metric label="Aktif danışan" value={data?.filter(item => item.isActive).length ?? '—'} foot={membership ? membership.usage.activeClients + ' / ' + membership.usage.maxClients + ' paket kullanımı' : 'Aktif hesaplar'} symbol="♙" tone="green" />
-        <Metric label="Yayımlanan plan" value={session.demo ? demo.plans.filter(item => item.state === 'Published').length : '—'} foot="Güncel beslenme planı" symbol="▤" tone="sand" />
-        <Metric label="Bugünkü randevu" value={session.demo ? appointments.length : '—'} foot={session.demo ? appointments.filter(item => item.status === 'Requested').length + ' onay bekliyor' : 'Takvim'} symbol="▦" tone="blue" />
+        <Metric label="Yayımlanan plan" value={plans.data?.filter(item => item.status === 'Published').length ?? '—'} foot="Güncel beslenme planı" symbol="▤" tone="sand" />
+        <Metric label="Bugünkü randevu" value={agenda.data ? appointments.length : '—'} foot={appointments.filter(item => item.status === 'Requested').length + ' onay bekliyor'} symbol="▦" tone="blue" />
         <Metric label="Toplam danışan" value={data?.length ?? '—'} foot="Aktif ve pasif kayıtlar" symbol="◎" tone="lilac" />
       </div>
-      {session.demo && <div className="overview-grid">
+      <div className="overview-grid">
         <section className="panel chart-panel">
-          <header className="section-header"><div><h2>Kilo eğilimi</h2>{demo.clients.length > 0 && <select className="inline-select" aria-label="Grafik danışanı" value={selectedClient?.id} onChange={event => setTrendClient(event.target.value)}>{demo.clients.map(client => <option key={client.id} value={client.id}>{client.fullName}</option>)}</select>}</div><select aria-label="Grafik dönemi" value={period} onChange={event => setPeriod(Number(event.target.value))}><option value={42}>Son 6 hafta</option><option value={21}>Son 3 hafta</option><option value={7}>Son 7 gün</option></select></header>
-          <div className="chart-meta"><strong>{trend.length ? trend.at(-1)?.weight.toLocaleString('tr-TR') + ' kg' : '—'}</strong>{trend.length > 1 && <Badge tone="gray">{(trend.at(-1)!.weight - trend[0].weight).toLocaleString('tr-TR', { maximumFractionDigits: 1, signDisplay: 'always' })} kg</Badge>}{selectedClient?.targetWeightKg && <span className="target-label">Hedef {selectedClient.targetWeightKg} kg</span>}</div>
-          <Trend data={trend.map(item => ({ date: item.date, value: item.weight }))} target={selectedClient?.targetWeightKg ?? undefined} />
+          <header className="section-header"><div><h2>Kilo eğilimi</h2>{data && data.length > 0 && <select className="inline-select" aria-label="Grafik danışanı" value={selectedClient?.id} onChange={event => setTrendClient(event.target.value)}>{data.map(client => <option key={client.id} value={client.id}>{client.fullName}</option>)}</select>}</div><select aria-label="Grafik dönemi" value={period} onChange={event => setPeriod(Number(event.target.value))}><option value={42}>Son 6 hafta</option><option value={21}>Son 3 hafta</option><option value={7}>Son 7 gün</option></select></header>
+          <div className="chart-meta"><strong>{trend.length ? trend.at(-1)!.weightKg.toLocaleString('tr-TR') + ' kg' : '—'}</strong>{trend.length > 1 && <Badge tone="gray">{(trend.at(-1)!.weightKg - trend[0].weightKg).toLocaleString('tr-TR', { maximumFractionDigits: 1, signDisplay: 'always' })} kg</Badge>}{target !== undefined && <span className="target-label">Hedef {target} kg</span>}</div>
+          {history.error ? <Wait error={history.error} reload={history.reload} /> : <Trend data={trend.map(item => ({ date: item.measuredOn, value: item.weightKg }))} target={target} />}
         </section>
         <section className="panel agenda-panel"><header className="section-header"><div><h2>Günün randevuları</h2><p className="muted">{appointments.length} randevu</p></div><button className="text-button" onClick={() => navigate('appointments')}>Takvimi aç →</button></header>
-          <div className="agenda-list">{appointments.map(item => { const name = demo.clients.find(client => client.id === item.clientId)?.fullName ?? 'Danışan'; return <div className="agenda-item" key={item.id}><time>{timeLabel(item.startsAt)}</time><span className="agenda-avatar">{initials(name)}</span><span><strong>{name}</strong><small>{appointmentLabels[item.status]}</small></span><span className={'agenda-dot ' + item.status} /></div> })}</div>
-          {!appointments.length && <Empty>Bugün randevu yok.</Empty>}
+          {agenda.error && <Wait error={agenda.error} reload={agenda.reload} />}
+          <div className="agenda-list">{appointments.map(item => { const name = item.clientName ?? 'Danışan'; return <div className="agenda-item" key={item.id}><time>{timeLabel(item.startsAt)}</time><span className="agenda-avatar">{initials(name)}</span><span><strong>{name}</strong><small>{appointmentLabels[item.status]}</small></span><span className={'agenda-dot ' + item.status} /></div> })}</div>
+          {agenda.data && !appointments.length && <Empty>Bugün randevu yok.</Empty>}
         </section>
-      </div>}
+      </div>
       <section className="panel"><header className="section-header"><div><h2>Danışanlar</h2>{data && <p className="muted">{data.length} kayıt</p>}</div><button className="text-button" onClick={() => navigate('clients')}>Tüm danışanlar →</button></header>
-      {!data ? <Wait error={clients.error} reload={clients.reload} /> : data.length ? <Table heads={['Danışan', 'Durum', session.demo ? 'Hedef kilo' : 'Telefon']}>{data.slice(0, 4).map((row, index) => <tr key={row.id}><td><ClientIdentity client={row} index={index} /></td><td><Badge tone={row.isActive ? 'green' : 'gray'}>{row.isActive ? 'Aktif' : 'Pasif'}</Badge></td><td>{session.demo ? row.targetWeightKg ? row.targetWeightKg + ' kg' : '—' : row.phone || '—'}</td></tr>)}</Table> : <Empty>Henüz danışan eklenmedi.</Empty>}
+      {!data ? <Wait error={clients.error} reload={clients.reload} /> : data.length ? <Table heads={['Danışan', 'Durum', 'Hedef', 'Telefon']}>{data.slice(0, 4).map((row, index) => <tr key={row.id}><td><ClientIdentity client={row} index={index} /></td><td><Badge tone={row.isActive ? 'green' : 'gray'}>{row.isActive ? 'Aktif' : 'Pasif'}</Badge></td><td>{goalNames[row.goalType]}</td><td>{row.phone || '—'}</td></tr>)}</Table> : <Empty>Henüz danışan eklenmedi.</Empty>}
       </section>
     </>}
   </>
