@@ -98,7 +98,7 @@ function MeasurementsView({ client, from, to }: { client: ClientSummary; from: s
           if (confirm('Ölçüm silinsin mi?')) void action.run(() => measurementsApi.remove(client.id, row.id))
         }}>Sil</button></td>
       </tr>)}</Table>{!measurements.length && <Empty>Bu dönemde ölçüm bulunamadı.</Empty>}</section>
-    {edit && <MeasurementForm measurement={edit === 'new' ? undefined : edit} close={() => setEdit(null)} save={saveMeasurement} />}
+    {edit && <MeasurementForm measurement={edit === 'new' ? undefined : edit} lastHeight={latest?.heightCm} close={() => setEdit(null)} save={saveMeasurement} />}
   </>
 }
 
@@ -110,7 +110,8 @@ const measurementFields = [
   ['bodyFatPercent', 'Yağ oranı (%)', 2, 75, false],
 ] as const
 
-function MeasurementForm({ measurement, close, save }: { measurement?: Measurement; close: () => void; save: (input: MeasurementInput) => Promise<void> }) {
+/** Yeni ölçümde boy, en son girilen ölçümden hazır gelir; istenirse değiştirilir. */
+function MeasurementForm({ measurement, lastHeight, close, save }: { measurement?: Measurement; lastHeight?: number; close: () => void; save: (input: MeasurementInput) => Promise<void> }) {
   const action = useAction()
   return <Modal title={measurement ? 'Ölçümü düzenle' : 'Yeni ölçüm'} close={() => { if (!action.busy) close() }}><form className="form" onSubmit={event => {
     const data = values(event)
@@ -122,7 +123,7 @@ function MeasurementForm({ measurement, close, save }: { measurement?: Measureme
   }}>
     <Field label="Ölçüm tarihi"><input name="measuredOn" type="date" max={dateKey()} defaultValue={measurement?.measuredOn ?? dateKey()} required /></Field>
     <div className="form-grid">{measurementFields.map(([name, label, min, max, required]) => (
-      <Field label={label} key={name}><input name={name} type="number" step="any" min={min} max={max} defaultValue={measurement?.[name] ?? undefined} required={required} /></Field>
+      <Field label={label} key={name}><input name={name} type="number" step="any" min={min} max={max} defaultValue={measurement?.[name] ?? (name === 'heightCm' ? lastHeight : undefined)} required={required} /></Field>
     ))}</div>
     <Field label="Not"><textarea name="note" maxLength={300} defaultValue={measurement?.note ?? ''} /></Field>
     <p className="muted">Aynı gün için tek ölçüm girilir; o gün ölçüm varsa onu düzenle.</p>
@@ -135,18 +136,12 @@ function JournalView({ client, from, to }: { client: ClientSummary; from: string
   const comparison = useLoad(() => mealLogsApi.comparison(client.id, { from, to }), 'journal:' + client.id + from + to)
   const action = useAction()
   const rows = comparison.data?.days.flatMap(day => day.meals.map(meal => ({ date: day.date, ...meal }))) ?? []
-  function openPhoto(logId: string) {
-    // Pencereyi tıklama anında açıyoruz (açılır pencere engelleyicisine takılmasın), bağlantı gelince adresini veriyoruz.
-    const tab = window.open('', '_blank')
+  const [photo, setPhoto] = useState<{ url: string; title: string; broken?: boolean } | null>(null)
+  /** Fotoğraf 10 dakikalık imzalı bağlantıyla açılır; yeni sekme yerine panelde pencere olarak gösterilir. */
+  function openPhoto(logId: string, title: string) {
     void action.run(async () => {
-      try {
-        const photo = await mealLogsApi.photoUrl(logId)
-        if (tab) tab.location.href = photo.url
-        else window.location.assign(photo.url)
-      } catch (error) {
-        tab?.close()
-        throw error
-      }
+      const result = await mealLogsApi.photoUrl(logId)
+      setPhoto({ url: result.url, title })
     })
   }
   if (!comparison.data) return <Wait error={comparison.error} reload={comparison.reload} />
@@ -156,9 +151,10 @@ function JournalView({ client, from, to }: { client: ClientSummary; from: string
       <td>{dateLabel(row.date)}</td><td>{row.name} · {shortTime(row.time)}</td>
       <td><Badge tone={row.log?.status === 'Eaten' ? 'green' : row.log?.status === 'Partial' ? 'amber' : 'gray'}>{row.log ? mealLogNames[row.log.status] : 'Kayıt yok'}</Badge></td>
       <td>{row.log?.note || '—'}</td>
-      <td>{row.log?.hasPhoto ? <button className="text-button" disabled={action.busy} onClick={() => openPhoto(row.log!.id)}>Fotoğrafı aç</button> : '—'}</td>
+      <td>{row.log?.hasPhoto ? <button className="text-button" disabled={action.busy} onClick={() => openPhoto(row.log!.id, dateLabel(row.date) + ' · ' + row.name)}>Fotoğrafı aç</button> : '—'}</td>
     </tr>)}</Table>{!rows.length && <Empty>Seçili dönemde yayımlanmış plandan planlanmış öğün bulunamadı.</Empty>}
     <p className="muted padded">Fotoğraf bağlantısı 10 dakika geçerlidir; süresi dolunca yeniden aç.</p>
+    {photo && <Modal title={photo.title} close={() => setPhoto(null)}>{photo.broken ? <Message>Fotoğraf yüklenemedi. Bağlantının süresi dolmuş olabilir ya da fotoğraf deposuna (STORAGE_PUBLIC_URL) bu bilgisayardan ulaşılamıyor.</Message> : <img className="photo-view" src={photo.url} alt={photo.title + ' öğün fotoğrafı'} onError={() => setPhoto({ ...photo, broken: true })} />}</Modal>}
   </section>
 }
 

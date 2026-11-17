@@ -21,7 +21,9 @@ Tarayıcıda `http://localhost:5173` adresini aç. Hazır demo verisi yok: hesab
 - Davet ve parola sıfırlama e-postaları `http://localhost:8025` (Mailpit) gelen kutusuna düşer; bağlantı bu paneldeki `/reset-password` sayfasını açar. API'deki `Web:BaseUrl` ayarı panelin adresi olmalı: Vite ile `http://localhost:5173`, Docker ile `http://localhost:3000`.
 - Randevu saatleri API'de UTC, ekranda Türkiye saati (UTC+3). Öğün ve çalışma saatleri zaten Türkiye saati (`"08:00:00"`).
 - PDF rapor token gerektirdiği için düz bağlantıyla değil, token'lı istekle indirilir (`api.download`).
-- Öğün fotoğrafı "Fotoğrafı aç" ile 10 dakikalık imzalı bağlantıdan açılır.
+- Öğün fotoğrafı "Fotoğrafı aç" ile 10 dakikalık imzalı bağlantıdan panelde pencere olarak açılır.
+- Plan düzenleyicide miktar gram olarak girilir; API'ye porsiyon sayısı gider (gram ÷ besinin porsiyon gramı, en fazla 20 porsiyon). Haftalık planda günler yan yana sütun olarak gösterilir.
+- Bildirime tıklayınca okundu olur ve ilgili sayfa açılır (randevu → Randevular, öğün → Öğün günlüğü ...).
 
 ## Sayfalar
 
@@ -31,6 +33,7 @@ Tarayıcıda `http://localhost:5173` adresini aç. Hazır demo verisi yok: hesab
 | Danışanlar | B (sd-1) | /api/clients, restrictions, history, activate/deactivate |
 | Ölçümler ve gelişim | C + K (sd-6) | measurements, progress, report.pdf |
 | Beslenme planları / Plan şablonları | E + F (sd-2, sd-3, sd-4) | /api/plans, publish, archive, /api/templates, copy-to-client |
+| Plan şablonları → "Hazır şablonları ekle" | F | 20 örnek şablon (`src/presetTemplates.ts`) ortak besinlerle POST /api/templates üzerinden eklenir |
 | Besin kataloğu | D (sd-8) | /api/foods, import |
 | Öğün günlüğü | G (sd-5) | clients/{id}/meal-logs, meal-logs/{id}/photo-url |
 | Enerji hesabı | H | /api/energy/calculate |
