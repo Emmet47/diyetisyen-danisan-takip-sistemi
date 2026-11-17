@@ -1,6 +1,6 @@
 // API çağrıları için ortak yardımcı. Tüm adresler /api ile başlar;
 // geliştirmede Vite proxy'si, Docker'da nginx bunları .NET API'ye iletir.
-// Kullanım rehberi: web/API_REHBERI.md
+// Yerel çalıştırma rehberi: web/README.md
 
 /** API'den gelen hata. ProblemDetails (RFC 9457) gövdesindeki bilgileri taşır. */
 export class ApiError extends Error {
@@ -45,27 +45,40 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     headers.Authorization = `Bearer ${token}`
   }
 
-  const response = await fetch(`/api${path}`, {
-    method,
-    headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
-  })
+  let response: Response
+  try {
+    response = await fetch(`/api${path}`, {
+      method,
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
+    })
+  } catch {
+    throw new ApiError(503, 'API’ye ulaşılamadı. .NET sunucusunun çalıştığını kontrol edin.')
+  }
 
   if (!response.ok) {
+    if (response.status === 401 && token && token === getToken() && !path.startsWith('/auth/')) {
+      window.dispatchEvent(new Event('ddts:unauthorized'))
+    }
     // Hatalar ProblemDetails biçiminde döner: { title, status, detail, errors }
     const problem = await response.json().catch(() => null)
     throw new ApiError(
       response.status,
-      problem?.detail ?? problem?.title ?? response.statusText,
+      problem?.detail ?? problem?.title ?? (response.status >= 500
+        ? 'API yanıt vermiyor. .NET sunucusunun çalıştığını kontrol edin.'
+        : response.statusText),
       problem?.errors,
     )
   }
 
   // 204 No Content: gövde yok (ör. silme)
-  if (response.status === 204) {
+  if (response.status === 204 || response.headers.get('Content-Length') === '0' || response.status === 202 && !response.headers.get('Content-Type')) {
     return undefined as T
   }
 
+  if (!response.headers.get('Content-Type')?.includes('json')) {
+    throw new ApiError(503, 'API yanıt vermiyor. .NET sunucusunun çalıştığını kontrol edin.')
+  }
   return (await response.json()) as T
 }
 
