@@ -47,13 +47,13 @@ class AppointmentApi {
 
   final SessionApi session;
 
-  Future<List<Appointment>> list() async => readResponse(
+  Future<List<Appointment>> list() async => readResponse<List<Appointment>>(
     await session.get('/api/me/appointments'),
     (json) => [for (final row in asList(json)) Appointment.fromJson(row)],
   );
 
   /// Diyetisyenin o günkü boş 30 dakikalık slotları (UTC).
-  Future<List<Slot>> slots(DateTime day) async => readResponse(
+  Future<List<Slot>> slots(DateTime day) async => readResponse<List<Slot>>(
     await session.get('/api/me/available-slots?date=${dateKey(day)}'),
     (json) => [
       for (final row in asList(json))

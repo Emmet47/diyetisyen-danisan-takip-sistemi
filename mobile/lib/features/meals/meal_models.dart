@@ -200,12 +200,18 @@ class MealsApi {
   final SessionApi session;
 
   Future<TodayMeals> today() async =>
-      readResponse(await session.get('/api/me/meals/today'), TodayMeals.fromJson);
+      readResponse<TodayMeals>(
+        await session.get('/api/me/meals/today'),
+        TodayMeals.fromJson,
+      );
 
   /// Yayımlanmış plan yoksa null.
   Future<ClientPlan?> plan() async {
     try {
-      return readResponse(await session.get('/api/me/plan'), ClientPlan.fromJson);
+      return readResponse<ClientPlan>(
+        await session.get('/api/me/plan'),
+        ClientPlan.fromJson,
+      );
     } on ApiException catch (error) {
       if (error.statusCode == 404) return null;
       rethrow;
@@ -213,7 +219,7 @@ class MealsApi {
   }
 
   /// Son kayıtlar (varsayılan son 7 gün).
-  Future<List<MealLog>> logs() async => readResponse(
+  Future<List<MealLog>> logs() async => readResponse<List<MealLog>>(
     await session.get('/api/me/meal-logs'),
     (json) => [for (final row in asList(json)) MealLog.fromJson(row)],
   );
@@ -224,7 +230,7 @@ class MealsApi {
     required DateTime date,
     required MealStatus status,
     required String? note,
-  }) async => readResponse(
+  }) async => readResponse<String>(
     await session.post('/api/me/meal-logs', {
       'mealId': mealId,
       'logDate': dateKey(date),
@@ -248,7 +254,7 @@ class MealsApi {
       session.upload('/api/me/meal-logs/$id/photo', bytes, filename);
 
   /// 10 dakika geçerli imzalı bağlantı.
-  Future<String> photoUrl(String id) async => readResponse(
+  Future<String> photoUrl(String id) async => readResponse<String>(
     await session.get('/api/meal-logs/$id/photo-url'),
     (json) => readString(asMap(json), 'url'),
   );

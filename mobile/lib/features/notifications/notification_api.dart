@@ -67,7 +67,7 @@ class NotificationApi {
   final SessionApi session;
 
   /// En yenisi önce, ilk 50 bildirim.
-  Future<List<AppNotification>> list() async => readResponse(
+  Future<List<AppNotification>> list() async => readResponse<List<AppNotification>>(
     await session.get('/api/notifications?page=1&pageSize=50'),
     (json) => [
       for (final row in asList(asMap(json)['items']))
@@ -78,7 +78,7 @@ class NotificationApi {
   Future<void> markRead(String id) =>
       session.post('/api/notifications/$id/read');
 
-  Future<NotificationSettings> settings() async => readResponse(
+  Future<NotificationSettings> settings() async => readResponse<NotificationSettings>(
     await session.get('/api/me/notification-settings'),
     NotificationSettings.fromJson,
   );
