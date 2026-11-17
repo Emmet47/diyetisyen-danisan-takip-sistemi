@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:diyetisyen_danisan_mobil/core/api_client.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:diyetisyen_danisan_mobil/main.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;

@@ -4,7 +4,7 @@ import 'dart:ui' as ui;
 
 import 'package:file_selector/file_selector.dart';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../demo_data.dart';
