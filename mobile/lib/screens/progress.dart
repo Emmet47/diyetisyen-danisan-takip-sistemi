@@ -3,26 +3,15 @@ import 'dart:math' as math;
 import 'package:material_ui/material_ui.dart';
 
 import '../core/api_client.dart';
-import '../demo_data.dart';
+import '../core/format.dart';
 import '../features/measurements/client_measurements.dart';
 import '../ui.dart';
 
+/// Danışanın kendi ölçüm geçmişi ve eğilim grafiği (UC-28, FR-C4).
 class ProgressScreen extends StatefulWidget {
-  const ProgressScreen({super.key})
-    : token = null,
-      onUnauthorized = null,
-      api = const ApiClient();
+  const ProgressScreen({super.key, required this.api});
 
-  const ProgressScreen.live({
-    super.key,
-    required String this.token,
-    required VoidCallback this.onUnauthorized,
-    required this.api,
-  });
-
-  final String? token;
-  final VoidCallback? onUnauthorized;
-  final ApiClient api;
+  final SessionApi api;
 
   @override
   State<ProgressScreen> createState() => _ProgressScreenState();
@@ -51,50 +40,22 @@ class _ProgressScreenState extends State<ProgressScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.token != null) {
-      _fetch();
-    } else {
-      final now = DateTime.now();
-      _history = MeasurementHistory(
-        items: [
-          Measurement(
-            measuredOn: now.subtract(const Duration(days: 28)),
-            weightKg: 73.1,
-            heightCm: 169,
-            waistCm: 85,
-          ),
-          Measurement(
-            measuredOn: now.subtract(const Duration(days: 14)),
-            weightKg: 72.6,
-            heightCm: 169,
-            waistCm: 84,
-          ),
-          Measurement(
-            measuredOn: now,
-            weightKg: 71.8,
-            heightCm: 169,
-            waistCm: 83,
-          ),
-        ],
-      );
-    }
+    _fetch();
   }
 
   Future<void> _fetch() async {
-    final token = widget.token;
-    if (token == null || _loading) return;
+    if (_loading) return;
     setState(() {
       _loading = true;
       _error = null;
       _history = null;
     });
     try {
-      final history = await loadClientMeasurements(token, api: widget.api);
+      final history = await loadClientMeasurements(widget.api);
       if (mounted) _history = history;
     } on ApiException catch (error) {
       if (!mounted) return;
       _error = error.message;
-      if (error.statusCode == 401) widget.onUnauthorized?.call();
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -116,8 +77,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
                 subtitle: 'Diyetisyeninin kaydettiği ölçümler',
               ),
             ),
-            if (widget.token != null)
-              IconButton(
+            IconButton(
                 tooltip: 'Ölçümleri yenile',
                 onPressed: _loading ? null : _fetch,
                 icon: const Icon(Icons.refresh),
@@ -156,10 +116,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
     final items = history.items;
     final values = items.map(_metric.value).toList();
     final latest = '${_format(values.last)} ${_metric.unit}';
-    final isDemo = widget.token == null;
-    final delta = isDemo
-        ? values.last - values.first
-        : _metric.change(items.last);
+    final delta = _metric.change(items.last);
     final target = _metric == _Metric.weight ? history.targetWeightKg : null;
     return [
       Panel(
@@ -192,9 +149,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
                 if (delta != null)
                   Flexible(
                     child: Text(
-                      isDemo
-                          ? '${delta > 0 ? '+' : ''}${_format(delta)} ${_metric.unit} / 28 gün'
-                          : 'Önceki ölçüme göre ${delta > 0 ? '+' : ''}${_format(delta)} ${_metric.unit}',
+                      'Önceki ölçüme göre ${delta > 0 ? '+' : ''}${_format(delta)} ${_metric.unit}',
                       textAlign: TextAlign.end,
                       style: const TextStyle(color: teal, fontSize: 12),
                     ),
@@ -249,9 +204,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
                 title: Text(
                   '${dayLabel(item.measuredOn)} ${item.measuredOn.year}',
                 ),
-                subtitle: isDemo
-                    ? null
-                    : Text(
+                subtitle: Text(
                         [
                           'Boy ${_format(item.heightCm)} cm',
                           if (item.hipCm case final hip?)

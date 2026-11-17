@@ -84,9 +84,13 @@ async function send(method: string, path: string, body?: unknown, accept = 'appl
     }
     // Hatalar ProblemDetails biçiminde döner: { title, status, detail, errors }
     const problem = await response.json().catch(() => null)
+    // 409'da başlık da anlamlı: "Bu saat az önce doldu. Lütfen başka bir saat seç." / "Paket limiti dolu. ..."
+    const detail = response.status === 409 && problem?.detail && problem?.title && problem.title !== 'Çakışma'
+      ? `${problem.title}. ${problem.detail}`
+      : problem?.detail
     throw new ApiError(
       response.status,
-      problem?.detail ?? statusMessages[response.status] ?? problem?.title ?? (response.status >= 500
+      detail ?? statusMessages[response.status] ?? problem?.title ?? (response.status >= 500
         ? 'API yanıt vermiyor. .NET sunucusunun çalıştığını kontrol et.'
         : response.statusText),
       problem?.errors,

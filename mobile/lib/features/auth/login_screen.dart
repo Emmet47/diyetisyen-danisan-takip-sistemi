@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/api_client.dart';
@@ -10,14 +9,18 @@ class LoginScreen extends StatefulWidget {
   const LoginScreen({
     super.key,
     required this.onSignedIn,
-    required this.onDemo,
     this.authenticate = signInClient,
+    this.forgotPassword = requestPasswordReset,
+    this.expiredNotice = false,
   });
 
   final ValueChanged<ClientSession> onSignedIn;
-  final VoidCallback onDemo;
   final Future<ClientSession> Function(String email, String password)
   authenticate;
+  final Future<void> Function(String email) forgotPassword;
+
+  /// Oturum süresi dolduğu için girişe dönüldüyse true.
+  final bool expiredNotice;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -30,6 +33,15 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _showPassword = false;
   bool _submitting = false;
   String? _error;
+  String? _info;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.expiredNotice) {
+      _info = 'Oturumunuz sona erdi. Yeniden giriş yapın.';
+    }
+  }
 
   @override
   void dispose() {
@@ -44,6 +56,7 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() {
       _submitting = true;
       _error = null;
+      _info = null;
     });
     try {
       final session = await widget.authenticate(
@@ -53,6 +66,38 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
       _password.clear();
       widget.onSignedIn(session);
+    } on ApiException catch (error) {
+      if (mounted) setState(() => _error = error.message);
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  /// "Parolamı unuttum" (UC-03): sıfırlama bağlantısı e-postayla gelir.
+  Future<void> _forgotPassword() async {
+    if (_submitting) return;
+    final email = _email.text.trim();
+    if (!RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email)) {
+      setState(() {
+        _info = null;
+        _error = 'Sıfırlama bağlantısı için önce e-posta adresinizi yazın.';
+      });
+      return;
+    }
+    setState(() {
+      _submitting = true;
+      _error = null;
+      _info = null;
+    });
+    try {
+      await widget.forgotPassword(email);
+      if (mounted) {
+        setState(
+          () => _info =
+              'Bu adres kayıtlıysa sıfırlama bağlantısı gönderildi. '
+              'E-postadaki bağlantıdan yeni şifrenizi belirleyip buradan giriş yapın.',
+        );
+      }
     } on ApiException catch (error) {
       if (mounted) setState(() => _error = error.message);
     } finally {
@@ -178,6 +223,25 @@ class _LoginScreenState extends State<LoginScreen> {
                                         ? 'Şifrenizi girin.'
                                         : null,
                                   ),
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: TextButton(
+                                      onPressed: _submitting
+                                          ? null
+                                          : _forgotPassword,
+                                      child: const Text('Şifremi unuttum'),
+                                    ),
+                                  ),
+                                  if (_info case final info?) ...[
+                                    const SizedBox(height: 4),
+                                    Semantics(
+                                      liveRegion: true,
+                                      child: Text(
+                                        info,
+                                        style: const TextStyle(color: teal),
+                                      ),
+                                    ),
+                                  ],
                                   if (_error case final error?) ...[
                                     const SizedBox(height: 12),
                                     Semantics(
@@ -217,13 +281,6 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                         ),
-                        if (kDebugMode) ...[
-                          const SizedBox(height: 12),
-                          TextButton(
-                            onPressed: _submitting ? null : widget.onDemo,
-                            child: const Text('Örnek verileri incele'),
-                          ),
-                        ],
                       ],
                     ),
                   ),

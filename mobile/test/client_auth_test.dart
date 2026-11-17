@@ -68,4 +68,49 @@ void main() {
       ),
     );
   });
+
+  test('Parolamı unuttum isteği e-postayla gönderilir (202, gövdesiz)', () async {
+    final api = ApiClient(
+      baseUrl: 'https://ddts.example',
+      createClient: () => MockClient((request) async {
+        expect(request.method, 'POST');
+        expect(request.url.path, '/api/auth/forgot-password');
+        expect(jsonDecode(request.body), {'email': 'client@example.test'});
+        return http.Response('', 202);
+      }),
+    );
+
+    await requestPasswordReset('client@example.test', api: api);
+  });
+
+  test('409 yanıtında ProblemDetails başlığı ve ayrıntısı gösterilir', () async {
+    final api = ApiClient(
+      baseUrl: 'https://ddts.example',
+      createClient: () => MockClient(
+        (request) async => http.Response.bytes(
+          utf8.encode(
+            jsonEncode({
+              'title': 'Bu saat az önce doldu',
+              'status': 409,
+              'detail': 'Lütfen başka bir saat seç.',
+            }),
+          ),
+          409,
+        ),
+      ),
+    );
+
+    await expectLater(
+      api.send('POST', '/api/me/appointments', token: 't', body: {}),
+      throwsA(
+        isA<ApiException>()
+            .having((error) => error.statusCode, 'durum', 409)
+            .having(
+              (error) => error.message,
+              'mesaj',
+              'Bu saat az önce doldu. Lütfen başka bir saat seç.',
+            ),
+      ),
+    );
+  });
 }

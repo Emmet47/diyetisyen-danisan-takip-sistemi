@@ -45,3 +45,12 @@ Future<ClientSession> signInClient(
     fullName: name.trim(),
   );
 }
+
+/// "Parolamı unuttum" (FR-A3): e-posta kayıtlı olsun olmasın sunucu 202 döner.
+/// E-postadaki bağlantı web'deki /reset-password sayfasını açar.
+Future<void> requestPasswordReset(
+  String email, {
+  ApiClient api = const ApiClient(),
+}) async {
+  await api.send('POST', '/api/auth/forgot-password', body: {'email': email});
+}
