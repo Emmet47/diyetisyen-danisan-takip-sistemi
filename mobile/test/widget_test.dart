@@ -112,6 +112,9 @@ void main() {
           )
           .first,
     );
+    // scrollUntilVisible buton oluşunca durur; tam ekrana girmesi için ayrıca kaydır.
+    await tester.ensureVisible(save);
+    await tester.pumpAndSettle();
     await tester.tap(save);
     await tester.pumpAndSettle();
 
@@ -137,6 +140,8 @@ void main() {
     await tester.scrollUntilVisible(find.text('10:00'), 150);
     await tester.tap(find.text('10:00'));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Randevu talep et'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Randevu talep et'));
     await tester.pumpAndSettle();
     expect(
@@ -146,6 +151,8 @@ void main() {
 
     await tester.scrollUntilVisible(find.text('10:00'), 150);
     await tester.tap(find.text('10:00'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Randevu talep et'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Randevu talep et'));
     await tester.pumpAndSettle();
