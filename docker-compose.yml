@@ -67,8 +67,9 @@ services:
       Storage__AccessKey: ${S3_ACCESS_KEY:-ddts-dev}
       Storage__SecretKey: ${S3_SECRET_KEY}
       Storage__Bucket: ${S3_BUCKET:-meal-photos}
-      # Fotoğrafın imzalı bağlantısı tarayıcıdan açılacağı için dışarıdan görünen adresle üretilir
-      Storage__PublicUrl: http://localhost:8333
+      # Fotoğrafın imzalı bağlantısı tarayıcıdan/telefondan açılacağı için dışarıdan görünen adresle üretilir
+      # (.env'deki STORAGE_PUBLIC_URL; telefon için bilgisayarın yerel IP'si yazılır)
+      Storage__PublicUrl: ${STORAGE_PUBLIC_URL:-http://localhost:8333}
       Smtp__Host: mailpit
       Smtp__Port: "1025"
       Jwt__SigningKey: ${JWT_SIGNING_KEY:?.env dosyasinda JWT_SIGNING_KEY bos}
