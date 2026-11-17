@@ -1,9 +1,18 @@
 import '../../core/api_client.dart';
 import '../../core/json.dart';
 
+/// Bildirime dokununca açılacak alt sekme: 0 Bugün, 2 Gelişim, 3 Randevular.
+int? notificationTab(String type) => switch (type) {
+  'PlanPublished' || 'MealLogReminder' => 0,
+  'MeasurementReminder' => 2,
+  _ when type.startsWith('Appointment') => 3,
+  _ => null,
+};
+
 class AppNotification {
   const AppNotification({
     required this.id,
+    required this.type,
     required this.title,
     required this.body,
     required this.isRead,
@@ -11,6 +20,9 @@ class AppNotification {
   });
 
   final String id;
+
+  /// Bildirim türü (ör. AppointmentConfirmed, PlanPublished).
+  final String type;
   final String title;
   final String body;
   final bool isRead;
@@ -20,6 +32,7 @@ class AppNotification {
     final map = asMap(json);
     return AppNotification(
       id: readString(map, 'id'),
+      type: readString(map, 'type'),
       title: readString(map, 'title'),
       body: readString(map, 'body'),
       isRead: readBool(map, 'isRead'),

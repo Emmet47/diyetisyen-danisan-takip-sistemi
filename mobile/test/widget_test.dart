@@ -183,6 +183,24 @@ void main() {
     });
   });
 
+  testWidgets('Bildirime dokununca okundu olur ve ilgili sekme açılır', (
+    tester,
+  ) async {
+    final backend = FakeBackend();
+    await signIn(tester, backend);
+    await tester.tap(find.text('Randevular'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Bildirimler, 1 okunmamış'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Yeni planın hazır'));
+    await tester.pumpAndSettle();
+
+    expect(backend.requests, contains('POST /api/notifications/n-1/read'));
+    // PlanPublished → Bugün sekmesi
+    expect(find.text('Bugünün öğünleri'), findsOneWidget);
+  });
+
   testWidgets('Şifremi unuttum bağlantısı e-postaya gönderilir', (
     tester,
   ) async {

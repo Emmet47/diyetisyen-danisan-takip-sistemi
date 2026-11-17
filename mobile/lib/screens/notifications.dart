@@ -42,11 +42,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
-  Future<void> _markRead(AppNotification item) async {
-    if (item.isRead) return;
+  /// Okundu işaretler ve ilgili sekmeye döner (randevu → Randevular, plan → Bugün ...).
+  Future<void> _open(AppNotification item) async {
     try {
-      await widget.api.markRead(item.id);
-      await _load();
+      if (!item.isRead) await widget.api.markRead(item.id);
+      if (!mounted) return;
+      final tab = notificationTab(item.type);
+      if (tab != null) {
+        Navigator.pop(context, tab);
+      } else {
+        await _load();
+      }
     } on ApiException catch (failure) {
       if (mounted) setState(() => error = failure.message);
     }
@@ -114,10 +120,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     subtitle: Text(
                       '${item.body}\n'
                       '${dayLabel(turkeyTime(item.createdAt))} ${timeLabel(turkeyTime(item.createdAt))} · '
-                      '${item.isRead ? 'Okundu' : 'Okunmadı · Okundu olarak işaretle'}',
+                      '${item.isRead ? 'Okundu' : 'Okunmadı'}'
+                      '${notificationTab(item.type) != null ? ' · Açmak için dokun' : ''}',
                     ),
                     isThreeLine: true,
-                    onTap: () => _markRead(item),
+                    onTap: () => _open(item),
                   ),
               const Divider(),
               Text(
