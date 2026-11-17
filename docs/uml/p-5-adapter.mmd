@@ -2,8 +2,8 @@ classDiagram
 direction TB
 class FoodSearchService {
   <<Client>>
-  +SearchAsync(query: string, includeExternal: bool) FoodSearchResult
-  +ImportAsync(externalId: string) Guid
+  +SearchAsync(query: string, source: string [0..1], includeExternal: bool) FoodSearchResult
+  +ImportAsync(cmd: ImportFoodCommand) Guid
 }
 class NutritionDataPort {
   <<interface · Target / Port>>
@@ -23,12 +23,13 @@ class UsdaFoodDataCentralAdapter {
   +SearchAsync(query: string, limit: int) NutritionItem[0..#42;]
   +GetByExternalIdAsync(externalId: string) NutritionItem [0..1]
   -Map(dto: FdcFoodDto) NutritionItem
+  -TranslateQuery(query: string) string
 }
 class UsdaFdcClient {
   <<Adaptee>>
-  -apiKey: string
+  +IsConfigured: bool
   +SearchFoodsAsync(query: string, pageSize: int) FdcFoodDto[0..#42;]
-  +GetFoodAsync(fdcId: int) FdcFoodDto
+  +GetFoodAsync(fdcId: int) FdcFoodDto [0..1]
 }
 class ApiQuotaCounter {
   <<singleton>>
@@ -42,7 +43,10 @@ class FdcFoodDto {
 }
 class NutritionItem {
   <<standart model>>
+  +Id: Guid [0..1]
   +Name: string
+  +PortionName: string
+  +PortionGrams: decimal
   +EnergyKcalPer100g: decimal
   +ProteinPer100g: decimal
   +CarbsPer100g: decimal
@@ -62,6 +66,7 @@ class DdtsDbContext {
 class IFoodItemRepository {
   <<interface · Repository>>
   +GetManyAsync(dietitianId: Guid, ids: Guid[0..#42;]) FoodItem[0..#42;]
+  +GetByExternalIdAsync(dietitianId: Guid, sourceName: string, externalId: string) FoodItem [0..1]
   +Add(food: FoodItem) void
 }
 NutritionDataPort <|.. LocalNutritionDataAdapter
@@ -75,4 +80,4 @@ UsdaFdcClient ..> FdcFoodDto : JSON yanıtı
 UsdaFoodDataCentralAdapter ..> NutritionItem : «create» (dönüştürür)
 FoodSearchService ..> FoodSearchResult : «create»
 note for UsdaFoodDataCentralAdapter "Zaman aşımı 3 sn. Hata, 429 ya da kota dolu ise<br>ExternalSourceUnavailableException fırlatır;<br>FoodSearchService yerel sonuçlarla devam eder."
-note for UsdaFdcClient "API anahtarı yalnızca sunucuda<br>(ortam değişkeni / user-secrets)"
+note for UsdaFdcClient "API anahtarı yalnızca sunucuda (ortam değişkeni / user-secrets),<br>X-Api-Key başlığıyla gider; adreste ve loglarda görünmez"

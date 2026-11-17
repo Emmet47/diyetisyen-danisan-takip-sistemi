@@ -92,7 +92,7 @@
 | GET | /api/me/available-slots?date= | Danışan | Boş slotlar (FR-I1) |
 | GET · POST | /api/me/appointments | Danışan | Randevuları / randevu talebi (FR-I2) |
 | POST | /api/me/appointments/{id}/reschedule, /cancel | Danışan | Erteleme / iptal (FR-I3) |
-| PUT | /api/me/notification-settings | Danışan | Bildirim izinleri (FR-J2) |
+| GET · PUT | /api/me/notification-settings | Danışan | Bildirim izinleri (FR-J2) |
 | PUT | /api/me/push-token | Danışan | Telefonun FCM anahtarını kaydeder |
 
 **Yönetici: /api/admin**
@@ -231,7 +231,7 @@ HTTP/1.1 200 OK
   "items": [
     { "id": "c41f2e3d-5a6b-4c7d-8e9f-0a1b2c3d4e5f", "name": "Yulaf ezmesi", "portionName": "1 yemek kaşığı", "portionGrams": 10,
       "energyKcalPer100g": 379, "proteinPer100g": 13.2, "carbsPer100g": 67.7, "fatPer100g": 6.5,
-      "sourceName": "USDA FoodData Central", "sourceUpdatedAt": "2026-11-03T09:12:00Z" }
+      "sourceName": "USDA FoodData Central", "externalId": "173904", "retrievedAt": "2026-11-03T09:12:00Z" }
   ],
   "externalUnavailable": true,
   "message": "Dış kaynağa şu an ulaşılamıyor, yerel kayıtlar gösteriliyor."

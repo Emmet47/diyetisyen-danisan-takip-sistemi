@@ -2,7 +2,7 @@ classDiagram
 direction TB
 class TemplateService {
   <<Client>>
-  +CopyToClientAsync(templateId: Guid, clientId: Guid, title: string) Guid
+  +CopyToClientAsync(templateId: Guid, clientId: Guid, title: string [0..1]) PlanCreatedDto
 }
 class IPrototype~T~ {
   <<interface · Prototype>>
