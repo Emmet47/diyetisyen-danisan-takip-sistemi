@@ -1,4 +1,5 @@
 using Ddts.Application.Abstractions.Email;
+using Ddts.Application.Abstractions.Storage;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -23,6 +24,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     /// <summary>API'nin "gönderdiği" e-postalar (ör. parola sıfırlama bağlantısı).</summary>
     public TestEmailSender Emails { get; } = new();
 
+    /// <summary>Fotoğraf deposu yerine bellek (SeaweedFS testte çalışmaz).</summary>
+    public InMemoryPhotoStorage Photos { get; } = new();
+
     public async ValueTask InitializeAsync() => await _database.StartAsync();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -41,6 +45,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         {
             services.RemoveAll<IEmailSender>();
             services.AddSingleton<IEmailSender>(Emails);
+            services.RemoveAll<IPhotoStorage>();
+            services.AddSingleton<IPhotoStorage>(Photos);
         });
     }
 
