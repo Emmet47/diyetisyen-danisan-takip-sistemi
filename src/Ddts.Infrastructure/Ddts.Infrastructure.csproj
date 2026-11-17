@@ -22,6 +22,12 @@
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
     <!-- SmtpEmailAdapter: e-posta gönderme -->
     <PackageReference Include="MailKit" />
+    <!-- S3PhotoStorageAdapter: SeaweedFS (S3 uyumlu) fotoğraf deposu -->
+    <PackageReference Include="AWSSDK.S3" />
+    <!-- FcmPushAdapter: Firebase Cloud Messaging ile push bildirimi -->
+    <PackageReference Include="FirebaseAdmin" />
+    <!-- QuestPdfReportRenderer: ilerleme raporu PDF'i -->
+    <PackageReference Include="QuestPDF" />
   </ItemGroup>
 
 </Project>

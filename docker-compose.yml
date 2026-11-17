@@ -67,10 +67,14 @@ services:
       Storage__AccessKey: ${S3_ACCESS_KEY:-ddts-dev}
       Storage__SecretKey: ${S3_SECRET_KEY}
       Storage__Bucket: ${S3_BUCKET:-meal-photos}
+      # Fotoğrafın imzalı bağlantısı tarayıcıdan açılacağı için dışarıdan görünen adresle üretilir
+      Storage__PublicUrl: http://localhost:8333
       Smtp__Host: mailpit
       Smtp__Port: "1025"
       Jwt__SigningKey: ${JWT_SIGNING_KEY:?.env dosyasinda JWT_SIGNING_KEY bos}
       Usda__ApiKey: ${USDA_API_KEY:-}
+      # Firebase (FCM) servis hesabı JSON'unun konteyner içindeki yolu; boşsa push gönderilmez, bildirim yalnızca uygulama içinde görünür
+      Fcm__CredentialsPath: ${FCM_CREDENTIALS_PATH:-}
       Web__BaseUrl: http://localhost:3000
       # İlk yönetici hesabı: ADMIN_PASSWORD boşsa oluşturulmaz
       Seed__AdminEmail: ${ADMIN_EMAIL:-admin@ornek.test}

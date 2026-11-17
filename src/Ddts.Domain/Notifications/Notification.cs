@@ -20,6 +20,7 @@ public sealed class Notification
         Title = Guard.Required(title, 100, "Bildirim başlığı");
         Body = Guard.Required(body, 300, "Bildirim metni");
         DedupKey = Guard.Optional(dedupKey, 100, "Tekrar önleme anahtarı");
+        CreatedAt = DateTime.UtcNow;
     }
 
     public Guid Id { get; private set; }

@@ -26,11 +26,6 @@ public sealed class FoodItem
         string? externalId,
         DateTime? sourceUpdatedAt)
     {
-        if (proteinPer100g + carbsPer100g + fatPer100g > 100m)
-        {
-            throw new DomainException("100 gramdaki protein, karbonhidrat ve yağ toplamı 100 g'ı geçemez.");
-        }
-
         var cleanExternalId = Guard.Optional(externalId, 50, "Dış kaynak kimliği");
         if ((cleanExternalId is null) != (sourceUpdatedAt is null))
         {
@@ -39,13 +34,7 @@ public sealed class FoodItem
 
         Id = Guid.CreateVersion7();
         DietitianId = dietitianId;
-        Name = Guard.Required(name, 150, "Besin adı");
-        PortionName = Guard.Required(portionName, 50, "Porsiyon adı");
-        PortionGrams = Guard.InRange(portionGrams, 0.1m, 99999.9m, "Porsiyon (g)");
-        EnergyKcalPer100g = Guard.InRange(energyKcalPer100g, 0m, 900m, "Enerji (kcal/100 g)");
-        ProteinPer100g = Guard.InRange(proteinPer100g, 0m, 100m, "Protein (g/100 g)");
-        CarbsPer100g = Guard.InRange(carbsPer100g, 0m, 100m, "Karbonhidrat (g/100 g)");
-        FatPer100g = Guard.InRange(fatPer100g, 0m, 100m, "Yağ (g/100 g)");
+        Apply(name, portionName, portionGrams, energyKcalPer100g, proteinPer100g, carbsPer100g, fatPer100g);
         SourceName = Guard.Required(sourceName, 50, "Kaynak adı");
         ExternalId = cleanExternalId;
         SourceUpdatedAt = sourceUpdatedAt is null ? null : Guard.Utc(sourceUpdatedAt.Value, nameof(sourceUpdatedAt));
@@ -82,6 +71,20 @@ public sealed class FoodItem
     public DateTime? SourceUpdatedAt { get; private set; }
 
     /// <summary>Verilen gram için enerji ve makrolar (Composite'in yaprağı MealItem bunu çağırır).</summary>
+    /// <summary>
+    /// Diyetisyenin kendi besin kaydını düzeltir (FR-D2). Kaynak bilgisi (Yerel / USDA, dış kimlik) değişmez.
+    /// Kaydın kime ait olduğu (ortak kayıtlar düzenlenemez) FoodService'te denetlenir.
+    /// </summary>
+    public void Update(
+        string name,
+        string portionName,
+        decimal portionGrams,
+        decimal energyKcalPer100g,
+        decimal proteinPer100g,
+        decimal carbsPer100g,
+        decimal fatPer100g) =>
+        Apply(name, portionName, portionGrams, energyKcalPer100g, proteinPer100g, carbsPer100g, fatPer100g);
+
     public NutrientTotals NutrientsFor(decimal grams)
     {
         var ratio = grams / 100m;
@@ -90,5 +93,37 @@ public sealed class FoodItem
             ProteinPer100g * ratio,
             CarbsPer100g * ratio,
             FatPer100g * ratio);
+    }
+
+    // Önce hepsi denetlenir, sonra atanır: hatalı bir değer kaydı yarı değişmiş bırakmaz.
+    private void Apply(
+        string name,
+        string portionName,
+        decimal portionGrams,
+        decimal energyKcalPer100g,
+        decimal proteinPer100g,
+        decimal carbsPer100g,
+        decimal fatPer100g)
+    {
+        if (proteinPer100g + carbsPer100g + fatPer100g > 100m)
+        {
+            throw new DomainException("100 gramdaki protein, karbonhidrat ve yağ toplamı 100 g'ı geçemez.");
+        }
+
+        var cleanName = Guard.Required(name, 150, "Besin adı");
+        var cleanPortionName = Guard.Required(portionName, 50, "Porsiyon adı");
+        var grams = Guard.InRange(portionGrams, 0.1m, 99999.9m, "Porsiyon (g)");
+        var energy = Guard.InRange(energyKcalPer100g, 0m, 900m, "Enerji (kcal/100 g)");
+        var protein = Guard.InRange(proteinPer100g, 0m, 100m, "Protein (g/100 g)");
+        var carbs = Guard.InRange(carbsPer100g, 0m, 100m, "Karbonhidrat (g/100 g)");
+        var fat = Guard.InRange(fatPer100g, 0m, 100m, "Yağ (g/100 g)");
+
+        Name = cleanName;
+        PortionName = cleanPortionName;
+        PortionGrams = grams;
+        EnergyKcalPer100g = energy;
+        ProteinPer100g = protein;
+        CarbsPer100g = carbs;
+        FatPer100g = fat;
     }
 }

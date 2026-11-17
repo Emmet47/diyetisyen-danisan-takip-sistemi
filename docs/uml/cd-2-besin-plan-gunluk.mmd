@@ -23,6 +23,7 @@ class NutritionPlan {
   +ArchivedAt: DateTime [0..1]
   +CreateDraft(client: Client, title: string, type: PlanType, sourceTemplateId: Guid [0..1])$ NutritionPlan
   +AddMeal(meal: Meal) void
+  +UpdateDraft(draft: NutritionPlan) void
   +Publish(now: DateTime) void
   +Archive(now: DateTime) void
   +CalculateTotals() NutrientTotals
@@ -35,6 +36,7 @@ class PlanTemplate {
   +PlanType: PlanType
   +UpdatedAt: DateTime
   +AddMeal(meal: Meal) void
+  +Update(name: string, description: string [0..1], planType: PlanType, meals: Meal[0..#42;]) void
   +CreatePlanFor(client: Client, title: string) NutritionPlan
   +CalculateTotals() NutrientTotals
 }
@@ -67,6 +69,7 @@ class FoodItem {
   +SourceName: string
   +ExternalId: string [0..1]
   +SourceUpdatedAt: DateTime [0..1]
+  +Update(name: string, portionName: string, portionGrams: decimal, energyKcalPer100g: decimal, proteinPer100g: decimal, carbsPer100g: decimal, fatPer100g: decimal) void
   +NutrientsFor(grams: decimal) NutrientTotals
 }
 class MealLog {

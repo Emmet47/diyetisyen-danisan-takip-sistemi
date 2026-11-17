@@ -2,7 +2,7 @@ classDiagram
 direction TB
 class EnergyService {
   <<Client>>
-  +CalculateForClientAsync(clientId: Guid, formula: string, activityFactor: decimal, adjustmentKcal: int) EnergyResult
+  +CalculateForClientAsync(clientId: Guid, formula: string, activityFactor: decimal, adjustmentKcal: int) EnergyCalculationDto
 }
 class EnergyCalculator {
   <<Context>>

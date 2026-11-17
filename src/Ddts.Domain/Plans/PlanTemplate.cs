@@ -56,6 +56,29 @@ public sealed class PlanTemplate : INutritionComponent
     /// Danışana bu şablondan bağımsız bir taslak plan oluşturur: her öğün Clone() ile yeni kimlikli
     /// kopya olur. Kopyada yapılan değişiklik şablonu etkilemez (BR-07, Şekil 5.3).
     /// </summary>
+    /// <summary>
+    /// Şablonun adını, açıklamasını, türünü ve öğünlerini değiştirir (FR-F1, PUT /api/templates/{id}).
+    /// Bu şablondan daha önce kopyalanmış planlar etkilenmez (kopyalar bağımsızdır, BR-07).
+    /// </summary>
+    public void Update(string name, string? description, PlanType planType, IEnumerable<Meal> meals)
+    {
+        var cleanName = Guard.Required(name, 100, "Şablon adı");
+        var cleanDescription = Guard.Optional(description, 500, "Açıklama");
+        var newMeals = meals.ToList();
+
+        if (planType == PlanType.Daily && newMeals.Any(m => m.DayNo != 1))
+        {
+            throw new DomainException("Günlük şablonda öğünler 1. güne eklenir.");
+        }
+
+        Name = cleanName;
+        Description = cleanDescription;
+        PlanType = planType;
+        _meals.Clear();
+        _meals.AddRange(newMeals);
+        UpdatedAt = DateTime.UtcNow;
+    }
+
     public NutritionPlan CreatePlanFor(Client client, string title)
     {
         if (client.DietitianId != DietitianId)

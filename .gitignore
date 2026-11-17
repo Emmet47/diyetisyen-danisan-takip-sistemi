@@ -45,3 +45,6 @@ desktop.ini
 # ---- Loglar ----
 *.log
 logs/
+
+# Firebase servis hesabı anahtarı (FCM) — asla commit edilmez
+*-firebase-adminsdk-*.json

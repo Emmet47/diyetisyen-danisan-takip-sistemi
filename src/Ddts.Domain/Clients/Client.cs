@@ -139,6 +139,10 @@ public sealed class Client
         _restrictions.FirstOrDefault(r => r.FoodItemId == foodItemId)?.Type;
 
     /// <summary>Danışan bu türdeki bildirimi açık tutuyor mu? (FR-J2, BR-12)</summary>
+    /// <summary>Danışan dört bildirim türünü mobil uygulamadan açıp kapatır (FR-J2).</summary>
+    public void ChangeNotificationSettings(NotificationSettings settings) =>
+        Notifications = settings ?? throw new ArgumentNullException(nameof(settings));
+
     public bool AllowsNotification(NotificationType type) => type switch
     {
         NotificationType.AppointmentRequested or

@@ -2,7 +2,7 @@ classDiagram
 direction TB
 class PlanService {
   <<Director>>
-  +CreatePlanAsync(cmd: CreatePlanCommand) Guid
+  +CreatePlanAsync(cmd: CreatePlanCommand) PlanCreatedDto
 }
 class NutritionPlanBuilder {
   <<Builder>>

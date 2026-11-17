@@ -30,6 +30,14 @@ public sealed class EfClientRepository(DdtsDbContext db) : IClientRepository
     public Task<int> CountActiveAsync(Guid dietitianId, CancellationToken cancellationToken = default) =>
         db.Clients.CountAsync(c => c.DietitianId == dietitianId && c.IsActive, cancellationToken);
 
+    public Task<Client?> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken = default) =>
+        db.Clients
+            .Include(c => c.Restrictions)
+            .SingleOrDefaultAsync(c => c.UserId == userId, cancellationToken);
+
+    public async Task<IReadOnlyList<Client>> ListAllActiveAsync(CancellationToken cancellationToken = default) =>
+        await db.Clients.AsNoTracking().Where(c => c.IsActive).OrderBy(c => c.Id).ToListAsync(cancellationToken);
+
     public void Add(Client client) => db.Clients.Add(client);
 
     public void Remove(Client client) => db.Clients.Remove(client);

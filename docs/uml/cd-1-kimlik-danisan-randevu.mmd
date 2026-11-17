@@ -43,6 +43,7 @@ class Client {
   +Deactivate() void
   +Activate() void
   +SetRestrictions(restrictions: FoodRestriction[0..#42;]) void
+  +ChangeNotificationSettings(settings: NotificationSettings) void
   +AgeOn(date: DateOnly) int
   +GetRestriction(foodItemId: Guid) RestrictionType [0..1]
   +AllowsNotification(type: NotificationType) bool

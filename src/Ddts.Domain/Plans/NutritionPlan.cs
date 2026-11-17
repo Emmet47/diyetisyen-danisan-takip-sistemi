@@ -25,6 +25,7 @@ public sealed class NutritionPlan : AggregateRoot, INutritionComponent
         PlanType = planType;
         SourceTemplateId = sourceTemplateId;
         Status = PlanStatus.Draft;
+        CreatedAt = DateTime.UtcNow;
     }
 
     public Guid Id { get; private set; }
@@ -78,6 +79,30 @@ public sealed class NutritionPlan : AggregateRoot, INutritionComponent
     /// arşivlemek servis katmanının işi (Şekil 5.4); veritabanındaki kısmi tekil indeks de
     /// aynı danışana iki yayımlanmış plan yazılmasını engeller (BR-03).
     /// </summary>
+    /// <summary>
+    /// Taslak planın içeriğini, Builder'ın doğrulayıp kurduğu yeni içerikle değiştirir (PUT /api/plans/{id}).
+    /// Başlık, tür, enerji hedefi ve öğünlerin hepsi değişir; plan kimliği aynı kalır.
+    /// Eski öğünlerin veritabanından silinmesi repository'nin işidir (INutritionPlanRepository.RemoveMeals).
+    /// </summary>
+    public void UpdateDraft(NutritionPlan draft)
+    {
+        EnsureDraft();
+
+        if (draft.ClientId != ClientId || draft.DietitianId != DietitianId)
+        {
+            throw new DomainException("Plan başka bir danışana taşınamaz.");
+        }
+
+        Title = draft.Title;
+        PlanType = draft.PlanType;
+        TargetKcal = draft.TargetKcal;
+        EnergyFormula = draft.EnergyFormula;
+
+        _meals.Clear();
+        _meals.AddRange(draft._meals);
+        draft._meals.Clear();
+    }
+
     public void Publish(DateTime now)
     {
         EnsureDraft();

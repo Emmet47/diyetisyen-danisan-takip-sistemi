@@ -20,6 +20,7 @@ public sealed class MealLog
         LogDate = logDate;
         Status = status;
         Note = Guard.Optional(note, 500, "Not");
+        LoggedAt = DateTime.UtcNow;
     }
 
     public Guid Id { get; private set; }
