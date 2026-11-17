@@ -1,27 +1,47 @@
 # DDTS web paneli
 
+Diyetisyen paneli ve platform yöneticisi paneli (React + Vite). Danışanlar web paneline giremez, mobil uygulamayı kullanır.
+
 ## Yerelde açma
 
-Node.js kurulu olmalı. Terminalde, `web` klasöründe çalıştır:
+Node.js kurulu olmalı. API (.NET) ve altyapı çalışıyor olmalı (kök README → "İlk kurulum"). Terminalde, `web` klasöründe çalıştır:
 
 ```powershell
 npm.cmd ci
 npm.cmd run dev -- --strictPort
 ```
 
-Tarayıcıda `http://localhost:5173` adresini aç. **Diyetisyen demosu** ve **Yönetici demosu** düğmeleri, API kapalıyken örnek verilerle çalışır. Demo değişiklikleri tarayıcı sekmesinin oturumu boyunca tutulur.
+Tarayıcıda `http://localhost:5173` adresini aç. Hazır demo verisi yok: hesabı "Hesap oluştur" ile açıp verileri sahte bilgilerle gir (NFR-D1).
 
 ## API ile çalışma
 
-Panel, `/api` isteklerini Vite üzerinden `http://localhost:8080` adresindeki .NET API’ye iletir. API’yi başlatmak için backend kodunu ve `docker-compose.yml` dosyasını içeren DDTS proje kopyasını kullan. Kurulum adımları [GitHub’daki proje rehberinde](https://github.com/Emmet47/diyetisyen-danisan-takip-sistemi/tree/dev#readme) yer alıyor.
+- Panel, `/api` isteklerini Vite proxy'si (aradaki yönlendirici) üzerinden `http://localhost:8080`'deki .NET API'ye iletir. API başka adresteyse: `DDTS_API_URL=http://localhost:5080 npm run dev`. Docker'da aynı işi `nginx.conf` yapar; bu yüzden CORS (tarayıcının başka porttaki API'ye istek atma izni) gerekmez.
+- Bütün API çağrıları `src/api/` klasöründe: ortak istemci `http.ts` (token ekleme, hata metinleri, 401'de girişe dönme), her modül için bir dosya (`clients.ts`, `plans.ts`, `appointments.ts` ...). Tipler `models.ts`'te ve backend DTO adlarıyla aynı.
+- JWT (giriş token'ı) 60 dakika geçerli, yenileme anahtarı yok: süre dolunca ya da API 401 dönünce giriş ekranına dönülür.
+- Davet ve parola sıfırlama e-postaları `http://localhost:8025` (Mailpit) gelen kutusuna düşer; bağlantı bu paneldeki `/reset-password` sayfasını açar. API'deki `Web:BaseUrl` ayarı panelin adresi olmalı: Vite ile `http://localhost:5173`, Docker ile `http://localhost:3000`.
+- Randevu saatleri API'de UTC, ekranda Türkiye saati (UTC+3). Öğün ve çalışma saatleri zaten Türkiye saati (`"08:00:00"`).
+- PDF rapor token gerektirdiği için düz bağlantıyla değil, token'lı istekle indirilir (`api.download`).
+- Öğün fotoğrafı "Fotoğrafı aç" ile 10 dakikalık imzalı bağlantıdan açılır.
 
-- API sağlık kontrolü `http://localhost:8080/api/health` adresinde, Scalar ise `http://localhost:8080/scalar` adresinde.
-- Yerel API’de e-posta davetini ve parola sıfırlamayı denemek için `Web:BaseUrl` ayarını panelin adresine eşitle. Vite ile `http://localhost:5173`, Docker web paneli ile `http://localhost:3000` kullanılır. Geliştirme e-postalarını `http://localhost:8025` adresindeki Mailpit’ten aç.
-- Giriş ve hesap açma, danışan yönetimi, abonelik ve yönetici işlemleri mevcut API uç noktalarını kullanır. Danışan kısıtlarında mevcut besinler kaldırılabilir. Sunucudaki besin kataloğu hazır olduğunda besin seçerek canlı kısıt eklenebilir.
-- Ölçümler ve gelişim sayfasında diyetisyen kendi danışanlarının ölçümlerini ekleyebilir, düzenleyebilir ve silebilir. Danışan aynı kayıtları mobil uygulamanın **Gelişim** ekranında görür. Panel, seçilen dönemin ölçüm tablosunu tarayıcının yazdırma menüsünden PDF olarak kaydedebilir.
-- Besin kataloğu ve USDA örneği, planlar ve şablonlar, öğün günlüğü, enerji hesabı, randevular ve bildirimler diyetisyen demosunda çalışır.
+## Sayfalar
+
+| Menü | Modül | Uç noktalar |
+| --- | --- | --- |
+| Genel bakış | özet | clients, subscription, plans, appointments, measurements |
+| Danışanlar | B (sd-1) | /api/clients, restrictions, history, activate/deactivate |
+| Ölçümler ve gelişim | C + K (sd-6) | measurements, progress, report.pdf |
+| Beslenme planları / Plan şablonları | E + F (sd-2, sd-3, sd-4) | /api/plans, publish, archive, /api/templates, copy-to-client |
+| Besin kataloğu | D (sd-8) | /api/foods, import |
+| Öğün günlüğü | G (sd-5) | clients/{id}/meal-logs, meal-logs/{id}/photo-url |
+| Enerji hesabı | H | /api/energy/calculate |
+| Randevular | I (sd-7) | /api/working-hours, /api/appointments |
+| Bildirimler | J (sd-4) | /api/notifications |
+| Aboneliğim | L | /api/subscription |
+| Yönetici sayfaları | A/L | /api/admin/* |
+
+## Kontroller
 
 ```powershell
-npm.cmd run lint
-npm.cmd run build
+npm.cmd run lint     # TypeScript kontrolü (CI'da da çalışır)
+npm.cmd run build    # üretim derlemesi
 ```

@@ -20,6 +20,10 @@
 | 404 Not Found | Kayıt yok ya da kullanıcıya ait değil (IDOR koruması) |
 | 409 Conflict | Mevcut durumla çakışma: paket limiti dolu, slot dolu, aynı gün ikinci ölçüm, taslak olmayan planı düzenleme |
 | 429 Too Many Requests | Giriş denemesi sınırı aşıldı |
+| 503 Service Unavailable | Dış kaynağa (USDA) ulaşılamadı; ör. besin içe aktarma. Aramada dış kaynak yoksa 503 değil, 200 + `externalUnavailable` döner |
+
+İstemciler (web ve mobil) hata mesajı olarak ProblemDetails'teki `detail` alanını gösterir; 409'da başlık da eklenir
+(ör. "Bu saat az önce doldu. Lütfen başka bir saat seç."). `detail` yoksa durum koduna göre Türkçe hazır metin gösterilir.
 
 ## 8.2 Uç noktalar
 

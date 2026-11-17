@@ -53,13 +53,28 @@ Yalnızca web'de çalışan biri için Docker + Node.js yeterli.
    ```bash
    cp .env.example .env
    ```
-   `POSTGRES_PASSWORD` ve `S3_SECRET_KEY` için istediğiniz bir değer, `JWT_SIGNING_KEY` için `openssl rand -base64 48` çıktısı.
+   `POSTGRES_PASSWORD` ve `S3_SECRET_KEY` için istediğiniz bir değer, `JWT_SIGNING_KEY` için `openssl rand -base64 48` çıktısı,
+   `ADMIN_PASSWORD` için en az 8 karakterlik bir parola (ilk platform yöneticisi bununla oluşur).
+   Telefonda/emülatörde öğün fotoğrafını görmek istiyorsanız `STORAGE_PUBLIC_URL`'e bilgisayarın yerel IP'sini yazın (ör. `http://192.168.1.20:8333`); boş kalırsa `http://localhost:8333` kullanılır ve fotoğraf yalnızca bilgisayarın tarayıcısında açılır.
 3. Her şeyi Docker ile açın:
    ```bash
    docker compose up --build
    ```
-4. http://localhost:3000 adresinde "API durumu: Healthy" yazıyorsa web → API zinciri çalışıyor.
+4. http://localhost:3000/api/health "Healthy" diyorsa web → API zinciri çalışıyor; http://localhost:3000 giriş ekranını açar.
 5. Mobil için bir kerelik ek adımlar: [mobile/README.md](mobile/README.md).
+
+## Uçtan uca ilk deneme
+
+Hazır demo verisi yok (NFR-D1): veriler arayüzden **sahte** bilgilerle girilir (ör. `ayse.dyt@ornek.test`, "Deneme Danışan"). Gerçek kişi ya da sağlık bilgisi kullanmayın.
+
+1. **Yönetici:** http://localhost:3000 → `.env`'deki `ADMIN_EMAIL` / `ADMIN_PASSWORD` ile giriş. Paketler, diyetisyenler, kullanım ve denetim kayıtları burada.
+2. **Diyetisyen:** çıkış yapıp "Hesap oluştur" ile diyetisyen hesabı açın ve paket seçin (FR-A1).
+3. **Danışan ekleme:** "Danışanlar → Danışan ekle"; KVKK onayı zorunlu. Davet e-postası http://localhost:8025 (Mailpit) gelen kutusuna düşer.
+4. **Danışan parolası:** e-postadaki bağlantı web'deki `/reset-password` sayfasını açar; danışan parolasını orada belirler.
+5. **Mobil:** danışan bu e-posta ve parolayla mobil uygulamaya girer (emülatörde API adresi `http://10.0.2.2:8080`).
+6. Besin kataloğu → plan/şablon → yayımla; danışan mobilde bugünkü öğünleri görür, öğün ve fotoğraf kaydeder; randevu talep eder, diyetisyen web'de onaylar.
+
+Parola sıfırlama bütün roller için aynı sayfadır: web'de "Parolamı unuttum", mobilde "Şifremi unuttum".
 
 ## Adresler
 
@@ -72,8 +87,14 @@ Yalnızca web'de çalışan biri için Docker + Node.js yeterli.
 | Sağlık kontrolü | http://localhost:8080/api/health |
 | Mailpit gelen kutusu (sahte e-postalar) | http://localhost:8025 |
 | PostgreSQL (DBeaver / pgAdmin ile) | `localhost:5432`, kullanıcı ve parola `.env` içinde |
-| SeaweedFS S3 (fotoğraf deposu) | http://localhost:8333 |
+| SeaweedFS S3 (fotoğraf deposu, imzalı bağlantılar) | http://localhost:8333 (`STORAGE_PUBLIC_URL`) |
 | Android emülatöründen API | http://10.0.2.2:8080 |
+
+## Web ve mobili çalıştırmak
+
+- **Web (geliştirme):** API çalışırken `cd web`, `npm ci`, `npm run dev` → http://localhost:5173. `/api` istekleri Vite proxy'siyle (aradaki yönlendirici) `http://localhost:8080`'e gider; API başka adresteyse `DDTS_API_URL` ortam değişkeniyle değiştirilir. Ayrıntı: [web/README.md](web/README.md).
+- **Mobil:** `cd mobile`, `flutter pub get`, `flutter run` (emülatör) ya da `flutter run --dart-define=API_BASE_URL=http://<bilgisayar IP>:8080` (telefon). Ayrıntı: [mobile/README.md](mobile/README.md).
+- CORS (tarayıcının başka porttaki API'ye istek atma izni) gerekmiyor: web istekleri aynı adresten proxy ile gider, mobil uygulama tarayıcı değildir.
 
 ## Backend'de çalışmak
 

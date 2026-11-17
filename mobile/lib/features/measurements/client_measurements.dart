@@ -74,12 +74,11 @@ class Measurement {
   }
 }
 
-Future<MeasurementHistory> loadClientMeasurements(
-  String token, {
-  ApiClient api = const ApiClient(),
-}) async {
-  final json = await api.get('/api/me/measurements', token: token);
+/// GET /api/me/measurements: danışanın kendi ölçüm geçmişi (FR-C4).
+Future<MeasurementHistory> loadClientMeasurements(SessionApi session) async {
+  final json = await session.get('/api/me/measurements');
   try {
+    if (json is! Map<String, dynamic>) throw const FormatException();
     return MeasurementHistory.fromJson(json);
   } on FormatException {
     throw const ApiException('Ölçüm geçmişi okunamadı.');

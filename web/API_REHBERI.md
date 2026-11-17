@@ -66,21 +66,28 @@ Parola sıfırlama e-postaları gerçek adrese gitmez, Mailpit'e düşer: http:/
 | 401 | Giriş yok / token süresi doldu | Giriş sayfasına yönlendir |
 | 403 | Rolün bu işlemi yapamaz | "Yetkiniz yok" mesajı |
 | 404 | Kayıt yok ya da başkasına ait | "Bulunamadı" mesajı |
-| 409 | Durum çakışması (paket limiti dolu, saat dolu ...) | `detail` mesajını göster |
+| 409 | Durum çakışması (paket limiti dolu, saat dolu ...) | `title` + `detail` mesajını göster (ör. "Bu saat az önce doldu. Lütfen başka bir saat seç.") |
 | 429 | Çok fazla giriş denemesi | "Biraz sonra tekrar deneyin" |
+| 503 | Dış kaynak (USDA) yok, ör. besin içe aktarma | "Biraz sonra tekrar dene" |
+
+`src/api/http.ts` bu mesajları kendisi üretir: `detail` varsa onu, yoksa durum koduna göre Türkçe hazır metni kullanır. Sayfada yalnızca `errorText(hata)` (src/ui.tsx) göster.
 
 ## 5. Koda dökmek
 
-Ortak yardımcı hazır: `src/api/http.ts`. `fetch` yazmana gerek yok; token ekleme ve hata ayıklama orada yapılıyor.
+Ortak yardımcı hazır: `src/api/http.ts`. `fetch` yazmana gerek yok; token ekleme, hata metinleri ve 401'de girişe dönme orada yapılıyor.
+Bütün modüllerin dosyaları da hazır: `auth.ts`, `clients.ts`, `subscription.ts`, `admin.ts`, `measurements.ts`, `reports.ts`,
+`foods.ts`, `energy.ts`, `plans.ts` (plan + şablon), `mealLogs.ts`, `appointments.ts`, `notifications.ts`. Tipler `models.ts`'te.
 
-1. Her modül için `src/api/` altında bir dosya aç: `clients.ts`, `plans.ts`, `appointments.ts` ...
-2. Scalar'daki **Responses** şemasına bakıp TypeScript tipini yaz (alan adları birebir aynı olmalı).
-3. Uç noktayı `api.get / api.post / api.put / api.delete` ile çağıran küçük bir fonksiyon yaz.
+Yeni bir uç nokta eklenirse:
+
+1. İlgili modül dosyasına küçük bir fonksiyon ekle (yoksa `src/api/` altında yeni dosya aç).
+2. Scalar'daki **Responses** şemasına bakıp TypeScript tipini `models.ts`'e yaz (alan adları birebir aynı olmalı).
+3. Uç noktayı `api.get / api.post / api.put / api.delete` ile çağır; dosya indirmek için `api.download`.
 
 Örnek (`GET /api/subscription-plans`, kayıt ekranındaki paketler):
 
 ```ts
-// src/api/subscriptionPlans.ts
+// Örnek (gerçek hali src/api/auth.ts içinde authApi.packages)
 import { api } from './http'
 
 // Alan adları sınıf diyagramındaki SubscriptionPlan ile aynı (docs/uml/cd-1), JSON'da camelCase.
@@ -102,7 +109,7 @@ Sayfada kullanmak ve hatayı göstermek:
 
 ```tsx
 import { ApiError } from '../api/http'
-import { getSubscriptionPlans, type SubscriptionPlan } from '../api/subscriptionPlans'
+import { getSubscriptionPlans, type SubscriptionPlan } from '../api/subscriptionPlans'   // örnek dosya adı
 
 const [paketler, setPaketler] = useState<SubscriptionPlan[]>([])
 const [hata, setHata] = useState<string | null>(null)
@@ -141,6 +148,9 @@ setToken(sonuc.accessToken)   // bundan sonraki tüm istekler bu token'la gider
 - **Besin arama:** `GET /api/foods?q=yulaf&external=true`. `externalUnavailable: true` gelirse `message`'ı sarı uyarı olarak göster; liste yine yerel sonuçlarla dolu gelir. Dış kaynaktan gelen satırda `id` boş, `externalId` dolu: plana eklemeden önce `POST /api/foods/import` ile aktar (Türkçe ad verebilirsin), dönen `id`'yi kullan.
 - **Öğün fotoğrafı:** `POST /api/me/meal-logs/{id}/photo`, `multipart/form-data`, alan adı `file`. Yalnızca JPEG/PNG, en fazla 5 MB. Görüntülemek için `GET /api/meal-logs/{id}/photo-url` → `{ url, expiresAt }` (10 dakika geçerli; süresi dolunca yeniden iste).
 - **Bildirimler:** `GET /api/notifications?page=1&pageSize=20` (sayfalı, en yenisi önce), okununca `POST /api/notifications/{id}/read`.
+- **Demo verisi:** panelde koda gömülü örnek veri yok (NFR-D1). Denemek için hesabı "Hesap oluştur" ile aç, danışan, besin ve planları sahte bilgilerle (`@ornek.test`, "Deneme Danışan") arayüzden gir.
+- **Besin düzenleme:** ortak (hazır) besinler düzenlenemez; denenirse API 403 döner ve "Ortak besin kayıtları düzenlenemez..." mesajı gösterilir.
+- **Diyetisyenin boş saatleri:** randevu oluştururken boş saatler `GET /api/working-hours` ve o günün `GET /api/appointments` listesinden hesaplanır (30 dakikalık slotlar). Son kontrolü API yapar; çakışırsa 409.
 - Danışan eklenince (`POST /api/clients`) danışana giden davet e-postası da Mailpit'e düşer. Davet bağlantısı parola sıfırlamayla aynı `/reset-password?token=...` sayfasını açar; danışan orada parolasını belirler, sonra mobil uygulamadan giriş yapar.
 
 ## 7. Takıldığında

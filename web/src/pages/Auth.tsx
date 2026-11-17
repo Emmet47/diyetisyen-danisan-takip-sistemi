@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { api } from '../api/http'
-import type { LoginResult, Package, Session } from '../api/models'
+import { authApi } from '../api/auth'
+import type { Session } from '../api/models'
 import { startSession } from '../api/session'
 import { Brand, Field, Message, useAction, useLoad, values } from '../ui'
 
@@ -14,7 +14,7 @@ export default function Auth({ onLogin, expired }: { onLogin: (session: Session)
   const [feedback, setFeedback] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const action = useAction()
-  const packages = useLoad(() => mode === 'register' ? api.get<Package[]>('/subscription-plans') : Promise.resolve([]), mode)
+  const packages = useLoad(() => mode === 'register' ? authApi.packages() : Promise.resolve([]), mode)
   function switchTo(next: Mode) {
     if (mode === 'reset') { history.replaceState(null, '', '/'); setResetToken(null) }
     setMode(next)
@@ -40,20 +40,22 @@ export default function Auth({ onLogin, expired }: { onLogin: (session: Session)
           const data = values(event)
           void action.run(async () => {
             if (mode === 'forgot') {
-              await api.post('/auth/forgot-password', { email: data.email.trim() })
+              await authApi.forgotPassword(data.email.trim())
               setFeedback('Bu adres kayıtlıysa sıfırlama bağlantısı gönderildi.')
               return
             }
             if (mode === 'reset') {
               if (!token) throw new Error('Bağlantı geçersiz. Yeni bağlantı iste.')
               if (data.password !== data.confirm) throw new Error('Parolalar birbiriyle eşleşmiyor.')
-              await api.post('/auth/reset-password', { token, newPassword: data.password })
+              await authApi.resetPassword(token, data.password)
               switchTo('login')
-              setFeedback('Parolan güncellendi. Yeni parolanla giriş yapabilirsin.')
+              setFeedback('Parolan güncellendi. Danışansan mobil uygulamadan, diyetisyen ya da yöneticiysen buradan giriş yapabilirsin.')
               return
             }
             const email = data.email.trim()
-            const result = await api.post<LoginResult>('/auth/' + mode, { ...data, email })
+            const result = mode === 'register'
+              ? await authApi.register({ fullName: data.fullName.trim(), email, password: data.password, phone: data.phone.trim() || null, subscriptionPlanId: data.subscriptionPlanId })
+              : await authApi.login(email, data.password)
             onLogin(startSession(email, result))
           })
         }}>
@@ -66,7 +68,7 @@ export default function Auth({ onLogin, expired }: { onLogin: (session: Session)
           {mode === 'login' && <button className="text-button auth-forgot" type="button" onClick={() => switchTo('forgot')} disabled={action.busy}>Parolamı unuttum</button>}
           <button className="button primary" disabled={action.busy || (mode === 'reset' && !token) || (mode === 'register' && !packages.data?.length)}>{action.busy ? 'İşleniyor…' : mode === 'login' ? 'Giriş yap' : mode === 'register' ? 'Hesap oluştur' : mode === 'reset' ? 'Parolayı kaydet' : 'Bağlantı gönder'}</button>
         </form>
-        {mode === 'login' ? <><p className="auth-register">Yeni diyetisyen hesabı mı? <button className="text-button" onClick={() => switchTo('register')} disabled={action.busy}>Hesap oluştur</button></p><div className="demo-entry"><span>Örnek verilerle keşfet</span><button className="button secondary" disabled={action.busy} onClick={() => onLogin(startSession('ayse@ornek.test'))}>Diyetisyen demosu</button><button className="text-button" disabled={action.busy} onClick={() => onLogin(startSession('admin@ornek.test', undefined, 'Admin'))}>Yönetici demosu</button></div></> : <button className="text-button back-link" onClick={() => switchTo('login')} disabled={action.busy}>← Giriş ekranına dön</button>}
+        {mode === 'login' ? <><p className="auth-register">Yeni diyetisyen hesabı mı? <button className="text-button" onClick={() => switchTo('register')} disabled={action.busy}>Hesap oluştur</button></p></> : <button className="text-button back-link" onClick={() => switchTo('login')} disabled={action.busy}>← Giriş ekranına dön</button>}
       </div>
     </section>
   </main>
