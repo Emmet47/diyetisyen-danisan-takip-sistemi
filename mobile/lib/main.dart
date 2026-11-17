@@ -198,13 +198,15 @@ class _ClientHomeState extends State<ClientHome> {
     MaterialPageRoute(builder: (_) => PlanScreen(api: meals)),
   );
 
+  /// Bildirime dokunulursa ekran ilgili sekmenin numarasıyla kapanır.
   Future<void> openNotifications() async {
-    await Navigator.push<void>(
+    final tab = await Navigator.push<int>(
       context,
       MaterialPageRoute(
         builder: (_) => NotificationsScreen(api: notifications),
       ),
     );
+    if (tab != null && mounted) setState(() => index = tab);
     await _loadUnread();
   }
 

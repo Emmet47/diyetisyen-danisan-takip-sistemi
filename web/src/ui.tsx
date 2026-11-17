@@ -81,14 +81,14 @@ export function Empty({ children }: { children: ReactNode }) { return <p classNa
 export function Field({ label, children }: { label: string; children: ReactNode }) {
   return <label className="field"><span>{label}</span>{children}</label>
 }
-export function Modal({ title, close, children }: { title: string; close: () => void; children: ReactNode }) {
+export function Modal({ title, close, children, wide = false }: { title: string; close: () => void; children: ReactNode; wide?: boolean }) {
   const dialog = useRef<HTMLDialogElement>(null)
   useEffect(() => {
     const element = dialog.current
     element?.showModal()
     return () => { element?.close() }
   }, [])
-  return <dialog ref={dialog} aria-label={title} onCancel={event => { event.preventDefault(); close() }}>
+  return <dialog ref={dialog} className={wide ? 'wide' : undefined} aria-label={title} onCancel={event => { event.preventDefault(); close() }}>
     <header className="modal-title"><h2>{title}</h2><button type="button" className="icon-button" aria-label="Kapat" onClick={close}>×</button></header>
     {children}
   </dialog>

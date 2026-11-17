@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { foodsApi } from '../api/foods'
 import type { FoodSource } from '../api/foods'
 import type { Food, FoodInput, FoodSearchResult } from '../api/models'
@@ -6,46 +6,49 @@ import { dateLabel, decimal } from '../format'
 import { Badge, Empty, Field, Message, Modal, Table, Title, Wait, useAction, useLoad, values } from '../ui'
 import type { PageProps } from '../ui'
 
-/** Plan, şablon ve kısıt ekranlarında yerel besin seçmek için küçük arama kutusu. */
+/** Yazmayı bitirdikten kısa süre sonra aramayı başlatır (her tuşta istek atılmasın). */
+function useDebounced(value: string, delay = 300) {
+  const [debounced, setDebounced] = useState(value)
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebounced(value), delay)
+    return () => window.clearTimeout(timer)
+  }, [value, delay])
+  return debounced
+}
+
+/**
+ * Plan, şablon ve kısıt ekranlarında yerel besin seçmek için arama kutusu.
+ * Yazdıkça arar; kutu boşken bütün yerel besinler listelenir.
+ */
 export function FoodPicker({ label = 'Besin', pick }: { label?: string; pick: (food: Food) => void }) {
   const [text, setText] = useState('')
-  const [result, setResult] = useState<Food[] | null>(null)
-  const action = useAction()
-  function search() {
-    void action.run(async () => {
-      const found = await foodsApi.search(text)
-      setResult(found.items.filter(item => item.id))
-    })
-  }
+  const query = useDebounced(text.trim())
+  const result = useLoad(() => foodsApi.search(query), 'picker:' + query)
+  const foods = result.data?.items.filter(item => item.id)
   return <div className="stack">
-    <div className="toolbar flush">
-      <Field label={label}><input type="search" placeholder="Besin adı ara…" value={text} onChange={event => setText(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); search() } }} /></Field>
-      <button type="button" className="button secondary" disabled={action.busy} onClick={search}>{action.busy ? 'Aranıyor…' : 'Ara'}</button>
-    </div>
-    <Message>{action.error}</Message>
-    {result && (result.length ? <div className="stack">{result.slice(0, 8).map(food => <div className="list-line" key={food.id}><span>{food.name} · {food.portionName} ({decimal(food.portionGrams)} g) · {decimal(food.energyKcalPer100g, 0)} kcal/100 g</span><button type="button" className="text-button" onClick={() => pick(food)}>Seç</button></div>)}</div>
-      : <Empty>Yerel kayıtlarda bulunamadı. Besin kataloğundan ekleyebilir ya da USDA'dan aktarabilirsin.</Empty>)}
+    <Field label={label}><input type="search" placeholder="Besin adı ara… (boşsa hepsi)" value={text} onChange={event => setText(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') event.preventDefault() }} /></Field>
+    {!foods ? <Wait error={result.error} reload={result.reload} /> : foods.length ? <div className="stack picker-list">{foods.map(food => <div className="list-line" key={food.id}><span>{food.name} · {food.portionName} ({decimal(food.portionGrams)} g) · {decimal(food.energyKcalPer100g, 0)} kcal/100 g</span><button type="button" className="text-button" onClick={() => pick(food)}>Seç</button></div>)}</div>
+      : <Empty>Yerel kayıtlarda bulunamadı. Besin kataloğundan ekleyebilir ya da USDA'dan aktarabilirsin.</Empty>}
   </div>
 }
 
 export default function Catalog(_props: PageProps) {
-  const [form, setForm] = useState({ q: '', source: '' as FoodSource, external: false })
+  const [text, setText] = useState('')
+  const [source, setSource] = useState<FoodSource>('')
+  const [external, setExternal] = useState(false)
   const [edit, setEdit] = useState<Food | 'new' | null>(null)
   const [notice, setNotice] = useState('')
-  const key = JSON.stringify(form)
-  const search = useLoad<FoodSearchResult>(() => foodsApi.search(form.q, form.source, form.external), key)
+  // Yazdıkça arar; kutu silinince bütün liste geri gelir.
+  const q = useDebounced(text.trim(), external ? 600 : 300)
+  const search = useLoad<FoodSearchResult>(() => foodsApi.search(q, source, external), JSON.stringify([q, source, external]))
   const action = useAction(search.reload)
   const rows = search.data?.items
   return <><Title title="Besin kataloğu" subtitle="Besinleri ara, kaynağa göre süz; USDA sonuçlarını kontrol edip yerel kayıtlara aktar." action={<button className="button primary" onClick={() => setEdit('new')}>＋ Besin ekle</button>} />
     <Message>{action.error}</Message><Message type="success">{notice}</Message>
-    <form className="panel toolbar" onSubmit={event => {
-      const data = values(event)
-      setNotice('')
-      setForm({ q: data.q, source: data.source as FoodSource, external: data.external === 'on' })
-    }}>
-      <input className="search" name="q" placeholder="Besin adı ara…" type="search" aria-label="Besin ara" defaultValue={form.q} />
-      <select name="source" aria-label="Besin kaynağı" defaultValue={form.source}><option value="">Tüm kaynaklar</option><option value="Yerel">Yerel</option><option value="USDA">USDA</option></select>
-      <label className="check"><input type="checkbox" name="external" defaultChecked={form.external} /> USDA FoodData Central'da da ara</label>
+    <form className="panel toolbar" onSubmit={event => { event.preventDefault(); search.reload() }}>
+      <input className="search" placeholder="Besin adı ara… (Türkçe yazabilirsin)" type="search" aria-label="Besin ara" value={text} onChange={event => { setText(event.target.value); setNotice('') }} />
+      <select aria-label="Besin kaynağı" value={source} onChange={event => setSource(event.target.value as FoodSource)}><option value="">Tüm kaynaklar</option><option value="Yerel">Yerel</option><option value="USDA">USDA</option></select>
+      <label className="check"><input type="checkbox" checked={external} onChange={event => setExternal(event.target.checked)} /> USDA FoodData Central'da da ara</label>
       <button className="button secondary">Ara</button>
     </form>
     {search.data?.externalUnavailable && <Message type="info">{search.data.message ?? 'Dış kaynağa şu an ulaşılamıyor, yerel kayıtlar gösteriliyor.'}</Message>}

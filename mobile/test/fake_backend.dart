@@ -202,6 +202,8 @@ class FakeBackend {
           'pageSize': 50,
           'totalCount': 1,
         });
+      case 'POST /api/notifications/n-1/read':
+        return http.Response('', 204);
       case 'GET /api/me/notification-settings':
         return _json(settings);
       case 'PUT /api/me/notification-settings':

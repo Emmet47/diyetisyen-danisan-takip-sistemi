@@ -20,5 +20,5 @@
 
 - ➕ API anahtarı hiçbir istemciye gitmez.
 - ➕ USDA çökse de plan hazırlanabilir.
-- ➖ USDA veritabanı İngilizce. Adapter içindeki küçük bir TR→EN besin sözlüğü sık aranan kelimeleri çevirir (ör. "yulaf" → "oats"); sözlükte olmayan kelime olduğu gibi gider. İçe aktarırken Türkçe ad verilebilir, sonraki aramalar yerelde Türkçe çalışır.
+- ➖ USDA veritabanı İngilizce. Adapter içindeki TR→EN besin sözlüğü (yaklaşık 250 kelime ve iki kelimelik ifade, ör. "yulaf ezmesi" → "rolled oats", "tavuk göğsü" → "chicken breast") sorguyu çevirir; çoğul/iyelik eki olan kelimede ek atılıp tekrar bakılır ("elmalar" → "apple"). Çevrilemeyen kelimeler aramadan çıkarılır, hiçbir kelime çevrilemezse sorgu olduğu gibi gider. İçe aktarırken Türkçe ad verilebilir, sonraki aramalar yerelde Türkçe çalışır.
 - ➖ Kota sayacı bellekte tutulduğu için uygulama yeniden başlayınca sıfırlanıyor (tek sunucu için kabul edilebilir).

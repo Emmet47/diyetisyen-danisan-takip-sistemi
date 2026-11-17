@@ -42,6 +42,12 @@ export default function App() {
   const [expired, setExpired] = useState(false)
   const [page, setPage] = useState(() => location.hash.slice(1) || 'overview')
   const [menu, setMenu] = useState(false)
+  // Geniş ekranda ☰ menüyü gizler/gösterir; dar ekranda (≤ 900 px) menü açılır pencere gibi açılır.
+  const [collapsed, setCollapsed] = useState(false)
+  function toggleMenu() {
+    if (window.matchMedia('(max-width: 900px)').matches) setMenu(!menu)
+    else setCollapsed(!collapsed)
+  }
   const nav = session?.role === 'Admin' ? administrator : dietitian
   const selected = nav.find(item => item.id === page) ?? nav[0]
   function navigate(next: string) {
@@ -95,10 +101,10 @@ export default function App() {
     case 'plans': case 'templates': content = <Plans key={selected.id} {...props} templates={selected.id === 'templates'} />; break
     case 'tracking': case 'energy': case 'journal': content = <Tracking key={selected.id} {...props} mode={selected.id} />; break
     case 'appointments': content = <Appointments {...props} />; break
-    case 'notifications': content = <Notifications {...props} changed={notices.reload} />; break
+    case 'notifications': content = <Notifications {...props} changed={notices.reload} navigate={navigate} />; break
     default: content = <Overview {...props} navigate={navigate} />
   }
-  return <div className="shell">
+  return <div className={'shell' + (collapsed ? ' nav-collapsed' : '')}>
     {menu && <button className="nav-overlay" aria-label="Menüyü kapat" onClick={() => setMenu(false)} />}
     <aside className={'sidebar' + (menu ? ' is-open' : '')}>
       <a className="home-link" href="#overview" onClick={() => navigate('overview')}><Brand /></a>
@@ -106,7 +112,7 @@ export default function App() {
       <nav aria-label="Panel menüsü">{nav.map(item => <a key={item.id} href={'#' + item.id} aria-current={selected.id === item.id ? 'page' : undefined} onClick={() => navigate(item.id)}><span className="nav-icon" aria-hidden="true">{item.symbol}</span>{item.label}{item.id === 'notifications' && unread > 0 && <span className="nav-count">{unread}</span>}</a>)}</nav>
       <div className="sidebar-footer">{usage && <div className="sidebar-plan"><span>{usage.planName} paketi</span><progress aria-label="Aktif danışan kullanımı" value={usage.usage.activeClients} max={usage.usage.maxClients || 1} /><small>{usage.usage.activeClients} / {usage.usage.maxClients} aktif danışan</small></div>}<button className="logout" onClick={() => logout()}><span aria-hidden="true">↪</span> Çıkış yap</button></div>
     </aside>
-    <div className="workspace"><header className="topbar"><div className="top-context"><button className="button secondary menu-button" aria-label="Menüyü aç" aria-expanded={menu} onClick={() => setMenu(!menu)}>☰</button><span>{roleName} paneli</span><span aria-hidden="true">/</span><strong>{selected.label}</strong></div><div className="top-actions">{isDietitian && <button className="icon-button notification-button" aria-label={unread ? 'Bildirimler, ' + unread + ' okunmamış' : 'Bildirimler'} onClick={() => navigate('notifications')}><span aria-hidden="true">◉</span>{unread > 0 && <i />}</button>}<div className="account"><span className="avatar">{initials(account) || account[0]?.toUpperCase()}</span><div><strong>{account}</strong><small>{roleName}</small></div></div></div></header>
+    <div className="workspace"><header className="topbar"><div className="top-context"><button className="button secondary menu-button" aria-label={collapsed ? 'Menüyü göster' : 'Menüyü aç/kapat'} aria-expanded={menu || !collapsed} onClick={toggleMenu}>☰</button><span>{roleName} paneli</span><span aria-hidden="true">/</span><strong>{selected.label}</strong></div><div className="top-actions">{isDietitian && <button className="icon-button notification-button" aria-label={unread ? 'Bildirimler, ' + unread + ' okunmamış' : 'Bildirimler'} onClick={() => navigate('notifications')}><span aria-hidden="true">◉</span>{unread > 0 && <i />}</button>}<div className="account"><span className="avatar">{initials(account) || account[0]?.toUpperCase()}</span><div><strong>{account}</strong><small>{roleName}</small></div></div></div></header>
       <main className="workspace-main" id="content">{content}</main></div>
   </div>
 }
