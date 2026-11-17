@@ -18,7 +18,11 @@ public sealed class FoodSearchService(
     IUnitOfWork unitOfWork,
     ICurrentUser currentUser) : IFoodSearchService
 {
+    /// <summary>Dış kaynaktan (USDA) en fazla bu kadar sonuç istenir (kota için az tutuluyor).</summary>
     public const int ResultLimit = 20;
+
+    /// <summary>Yerel kayıtlarda en fazla bu kadar sonuç döner; arama kutusu boşken bütün liste görünsün diye geniş.</summary>
+    public const int LocalResultLimit = 100;
     public const string ExternalUnavailableMessage = "Dış kaynağa şu an ulaşılamıyor, yerel kayıtlar gösteriliyor.";
 
     public async Task<FoodSearchResult> SearchAsync(
@@ -33,7 +37,7 @@ public sealed class FoodSearchService(
         var onlyLocal = IsSource(source, FoodService.LocalSourceName);
         var onlyExternal = IsSource(source, "USDA");
 
-        var local = await localSource.SearchAsync(cleanQuery, ResultLimit, cancellationToken);
+        var local = await localSource.SearchAsync(cleanQuery, LocalResultLimit, cancellationToken);
         var items = local
             .Where(i => !onlyLocal || i.SourceName == FoodService.LocalSourceName)
             .Where(i => !onlyExternal || i.SourceName != FoodService.LocalSourceName)
