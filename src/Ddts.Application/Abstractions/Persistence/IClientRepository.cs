@@ -16,6 +16,12 @@ public interface IClientRepository
     /// <summary>Paket limitine sayılan aktif danışan sayısı (BR-01).</summary>
     Task<int> CountActiveAsync(Guid dietitianId, CancellationToken cancellationToken = default);
 
+    /// <summary>Kullanıcı hesabına bağlı danışan (bildirim izni denetimi için); yoksa null.</summary>
+    Task<Client?> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>Bütün diyetisyenlerin aktif danışanları (ReminderWorker'ın ölçüm hatırlatması için).</summary>
+    Task<IReadOnlyList<Client>> ListAllActiveAsync(CancellationToken cancellationToken = default);
+
     void Add(Client client);
 
     void Remove(Client client);

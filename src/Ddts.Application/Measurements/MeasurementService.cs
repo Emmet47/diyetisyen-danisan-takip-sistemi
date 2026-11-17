@@ -105,37 +105,13 @@ public sealed class MeasurementService(
     private async Task<MeasurementHistoryDto> HistoryAsync(Client client, CancellationToken cancellationToken)
     {
         var list = await measurements.ListAsync(client.Id, DateOnly.MinValue, DateOnly.MaxValue, cancellationToken);
-        var ordered = list.OrderBy(m => m.MeasuredOn).ToList();
+        var items = MeasurementTrend.Build(list);
 
-        var items = new List<MeasurementDto>(ordered.Count);
-        Measurement? previous = null;
-        foreach (var m in ordered)
-        {
-            items.Add(new MeasurementDto(
-                m.Id,
-                m.MeasuredOn,
-                m.WeightKg,
-                m.HeightCm,
-                m.WaistCm,
-                m.HipCm,
-                m.BodyFatPercent,
-                m.Note,
-                Change(previous?.WeightKg, m.WeightKg),
-                Change(previous?.WaistCm, m.WaistCm),
-                Change(previous?.HipCm, m.HipCm),
-                Change(previous?.BodyFatPercent, m.BodyFatPercent)));
-            previous = m;
-        }
-
-        decimal? remaining = client.TargetWeightKg is { } target && previous is not null
-            ? Math.Abs(previous.WeightKg - target)
-            : null;
-
-        return new MeasurementHistoryDto(client.TargetWeightKg, remaining, items);
+        return new MeasurementHistoryDto(
+            client.TargetWeightKg,
+            MeasurementTrend.RemainingKg(client.TargetWeightKg, items.Count == 0 ? null : items[^1].WeightKg),
+            items);
     }
-
-    private static decimal? Change(decimal? previous, decimal? current) =>
-        previous is { } p && current is { } c ? c - p : null;
 
     /// <summary>Aynı gün için tek ölçüm (FR-C1): o gün başka bir ölçüm varsa 409 (Senaryo 4, adım 1a).</summary>
     private async Task EnsureDayIsFreeAsync(Guid clientId, DateOnly day, Guid? exceptMeasurementId, CancellationToken cancellationToken)

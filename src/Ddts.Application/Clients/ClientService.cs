@@ -4,6 +4,7 @@ using Ddts.Application.Abstractions.Auditing;
 using Ddts.Application.Abstractions.Email;
 using Ddts.Application.Abstractions.Persistence;
 using Ddts.Application.Abstractions.Security;
+using Ddts.Application.Abstractions.Storage;
 using Ddts.Application.Common;
 using Ddts.Domain.Clients;
 using Ddts.Domain.Common;
@@ -22,6 +23,8 @@ public sealed class ClientService(
     ISubscriptionRepository subscriptions,
     IFoodItemRepository foodItems,
     IAuditLogRepository auditLogs,
+    IMealLogRepository mealLogs,
+    IPhotoStorage photoStorage,
     IUnitOfWork unitOfWork,
     IEmailSender emailSender,
     IAuditLogger auditLogger,
@@ -195,12 +198,28 @@ public sealed class ClientService(
             log.ClearDetails();
         }
 
+        // Depodaki öğün fotoğrafları da silinir (belge 2.5 madde 4). Anahtarlar kayıtlar silinmeden önce alınır.
+        var photoKeys = await mealLogs.ListPhotoKeysAsync(client.Id, cancellationToken);
+
         // Hesap silinince veritabanı danışanı ve ona bağlı ölçüm, plan, öğün kaydı, randevu ve
         // bildirimleri zincirleme (ON DELETE CASCADE) siler.
         clients.Remove(client);
         users.Remove(user);
         await auditLogger.LogAsync("ClientDeleted", AuditEntityType, client.Id, null, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        foreach (var key in photoKeys)
+        {
+            try
+            {
+                await photoStorage.DeleteAsync(key, CancellationToken.None);
+            }
+            catch (Exception)
+            {
+                // Veritabanı kaydı silindi; depoda kalan dosyaya artık hiçbir bağlantı üretilemez.
+                // Depo hatası silme işlemini geri almaz (adapter hatayı loglar).
+            }
+        }
     }
 
     public async Task<ClientDetailDto> GetMyProfileAsync(CancellationToken cancellationToken = default)
