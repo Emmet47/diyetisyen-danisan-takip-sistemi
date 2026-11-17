@@ -158,6 +158,27 @@ public sealed class KullaniciVeDanisanTests
     }
 
     [Fact]
+    public void Olcum_duzeltilir_hatali_degerde_hic_degismez()
+    {
+        var olcum = new Measurement(Guid.NewGuid(), new DateOnly(2026, 12, 1), 70.4m, 168m, 82m, null, null, null);
+        var duzeltilenGun = new DateOnly(2026, 11, 30);
+
+        olcum.Update(duzeltilenGun, 70.2m, 168m, 81.5m, 98m, 28m, "Sabah aç karnına");
+
+        Assert.Equal(duzeltilenGun, olcum.MeasuredOn);
+        Assert.Equal(70.2m, olcum.WeightKg);
+        Assert.Equal(81.5m, olcum.WaistCm);
+        Assert.Equal(98m, olcum.HipCm);
+        Assert.Equal(28m, olcum.BodyFatPercent);
+        Assert.Equal("Sabah aç karnına", olcum.Note);
+
+        // Bel çevresi sınır dışı: tarih ve kilo da eski hâlinde kalır
+        Assert.Throws<DomainException>(() => olcum.Update(new DateOnly(2026, 12, 2), 69m, 168m, 10m, null, null, null));
+        Assert.Equal(duzeltilenGun, olcum.MeasuredOn);
+        Assert.Equal(70.2m, olcum.WeightKg);
+    }
+
+    [Fact]
     public void Fotograf_yalnizca_JPEG_PNG_ve_en_fazla_5_MB()
     {
         Assert.Equal(PhotoInfo.MaxSizeBytes, PhotoInfo.Create("a.jpg", "image/jpeg", 5 * 1024 * 1024).SizeBytes);

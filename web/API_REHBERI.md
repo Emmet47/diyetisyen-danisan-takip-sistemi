@@ -135,6 +135,7 @@ setToken(sonuc.accessToken)   // bundan sonraki tüm istekler bu token'la gider
 - Uzun listeler sayfalı: `?page=1&pageSize=20` (sayfa boyutu en fazla 100). Sayfalı yanıtın biçimi: `{ items: [...], page, pageSize, totalCount }`; toplam sayfa = `Math.ceil(totalCount / pageSize)`.
 - Yönetici sayfaları (`/api/admin/...`) için giriş: yerelde user-secrets'taki `Seed:AdminEmail` / `Seed:AdminPassword`, Docker'da `.env`'deki `ADMIN_EMAIL` / `ADMIN_PASSWORD` ile `POST /api/auth/login`.
 - Parola sıfırlama gibi e-postalar gerçekten gitmez; **http://localhost:8025** (Mailpit) gelen kutusunda görünür.
+- Ölçüm geçmişi (`GET /api/clients/{id}/measurements`, mobilde `GET /api/me/measurements`) şu biçimde döner: `{ targetWeightKg, remainingKg, items: [...] }`. `items` eskiden yeniye sıralı (grafik bu sırayla çizilir); her satırda bir önceki ölçüme göre fark var (`weightChangeKg`, `waistChangeCm` ..., ilk satırda `null`). `targetWeightKg` grafikteki hedef çizgisi, `remainingKg` hedefe kalan kilo. Aynı gün ikinci ölçüm 409 döner: kullanıcıya o günkü ölçümü düzenlemesini söyle (`PUT .../measurements/{measurementId}`).
 - Danışan eklenince (`POST /api/clients`) danışana giden davet e-postası da Mailpit'e düşer. Davet bağlantısı parola sıfırlamayla aynı `/reset-password?token=...` sayfasını açar; danışan orada parolasını belirler, sonra mobil uygulamadan giriş yapar.
 
 ## 7. Takıldığında

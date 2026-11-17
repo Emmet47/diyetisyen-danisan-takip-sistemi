@@ -63,6 +63,7 @@ class Measurement {
   +HipCm: decimal [0..1]
   +BodyFatPercent: decimal [0..1]
   +Note: string [0..1]
+  +Update(measuredOn: DateOnly, weightKg: decimal, heightCm: decimal, waistCm: decimal, hipCm: decimal [0..1], bodyFatPercent: decimal [0..1], note: string [0..1]) void
 }
 class AggregateRoot {
   <<abstract>>

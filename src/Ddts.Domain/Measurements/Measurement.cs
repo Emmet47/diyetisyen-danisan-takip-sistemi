@@ -24,13 +24,7 @@ public sealed class Measurement
     {
         Id = Guid.CreateVersion7();
         ClientId = clientId;
-        MeasuredOn = measuredOn;
-        WeightKg = Guard.InRange(weightKg, 20m, 350m, "Kilo (kg)");
-        HeightCm = Guard.InRange(heightCm, 100m, 250m, "Boy (cm)");
-        WaistCm = Guard.InRange(waistCm, 30m, 250m, "Bel çevresi (cm)");
-        HipCm = Guard.InRange(hipCm, 30m, 250m, "Kalça çevresi (cm)");
-        BodyFatPercent = Guard.InRange(bodyFatPercent, 2m, 75m, "Vücut yağ oranı (%)");
-        Note = Guard.Optional(note, 300, "Not");
+        Apply(measuredOn, weightKg, heightCm, waistCm, hipCm, bodyFatPercent, note);
     }
 
     public Guid Id { get; private set; }
@@ -50,4 +44,44 @@ public sealed class Measurement
     public decimal? BodyFatPercent { get; private set; }
 
     public string? Note { get; private set; }
+
+    /// <summary>
+    /// Yanlış girilen ölçümü düzeltir (UC-11, Senaryo 4 adım 1a). Kurallar eklemedekiyle aynı; tarih de
+    /// değişebilir, o gün için başka ölçüm varsa servis 409 döner.
+    /// </summary>
+    public void Update(
+        DateOnly measuredOn,
+        decimal weightKg,
+        decimal heightCm,
+        decimal waistCm,
+        decimal? hipCm,
+        decimal? bodyFatPercent,
+        string? note) =>
+        Apply(measuredOn, weightKg, heightCm, waistCm, hipCm, bodyFatPercent, note);
+
+    private void Apply(
+        DateOnly measuredOn,
+        decimal weightKg,
+        decimal heightCm,
+        decimal waistCm,
+        decimal? hipCm,
+        decimal? bodyFatPercent,
+        string? note)
+    {
+        // Önce hepsi denetlenir, sonra atanır: hatalı bir değer ölçümü yarı değişmiş bırakmaz.
+        var weight = Guard.InRange(weightKg, 20m, 350m, "Kilo (kg)");
+        var height = Guard.InRange(heightCm, 100m, 250m, "Boy (cm)");
+        var waist = Guard.InRange(waistCm, 30m, 250m, "Bel çevresi (cm)");
+        var hip = Guard.InRange(hipCm, 30m, 250m, "Kalça çevresi (cm)");
+        var bodyFat = Guard.InRange(bodyFatPercent, 2m, 75m, "Vücut yağ oranı (%)");
+        var cleanNote = Guard.Optional(note, 300, "Not");
+
+        MeasuredOn = measuredOn;
+        WeightKg = weight;
+        HeightCm = height;
+        WaistCm = waist;
+        HipCm = hip;
+        BodyFatPercent = bodyFat;
+        Note = cleanNote;
+    }
 }
