@@ -22,6 +22,12 @@ RUN dotnet publish src/Ddts.Api/Ddts.Api.csproj -c Release -o /app/publish --no-
 # ---------- 2. aşama: çalıştırma (yalnızca runtime, küçük) ----------
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
+
+# PDF raporu (QuestPDF) yazı tipi işlemleri için fontconfig kütüphanesi gerekir; çalışma imajında yok.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libfontconfig1 \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY --from=build /app/publish .
 
 # Resmi .NET imajlarındaki yetkisiz kullanıcı (root olarak çalışmıyoruz)

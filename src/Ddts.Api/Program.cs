@@ -5,21 +5,43 @@ using Ddts.Api.Security;
 using Ddts.Api.Workers;
 using Ddts.Application.Abstractions.Auditing;
 using Ddts.Application.Abstractions.Email;
+using Ddts.Application.Abstractions.Events;
+using Ddts.Application.Abstractions.Notifications;
+using Ddts.Application.Abstractions.Nutrition;
 using Ddts.Application.Abstractions.Payments;
 using Ddts.Application.Abstractions.Persistence;
+using Ddts.Application.Abstractions.Reports;
 using Ddts.Application.Abstractions.Security;
+using Ddts.Application.Abstractions.Storage;
 using Ddts.Application.Admin;
+using Ddts.Application.Appointments;
 using Ddts.Application.Auth;
 using Ddts.Application.Clients;
 using Ddts.Application.Common;
+using Ddts.Application.Energy;
+using Ddts.Application.Foods;
+using Ddts.Application.MealLogs;
 using Ddts.Application.Measurements;
+using Ddts.Application.Notifications;
+using Ddts.Application.Notifications.Handlers;
+using Ddts.Application.Plans;
+using Ddts.Application.Reports;
 using Ddts.Application.Subscriptions;
+using Ddts.Application.Templates;
+using Ddts.Domain.Appointments;
+using Ddts.Domain.Energy;
+using Ddts.Domain.Plans;
 using Ddts.Infrastructure.Auditing;
 using Ddts.Infrastructure.Email;
+using Ddts.Infrastructure.Events;
+using Ddts.Infrastructure.Notifications;
+using Ddts.Infrastructure.Nutrition;
 using Ddts.Infrastructure.Payments;
 using Ddts.Infrastructure.Persistence;
 using Ddts.Infrastructure.Persistence.Repositories;
+using Ddts.Infrastructure.Reports;
 using Ddts.Infrastructure.Security;
+using Ddts.Infrastructure.Storage;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -123,6 +145,11 @@ builder.Services.AddScoped<ISubscriptionRepository, EfSubscriptionRepository>();
 builder.Services.AddScoped<IFoodItemRepository, EfFoodItemRepository>();
 builder.Services.AddScoped<IAuditLogRepository, EfAuditLogRepository>();
 builder.Services.AddScoped<IMeasurementRepository, EfMeasurementRepository>();
+builder.Services.AddScoped<INutritionPlanRepository, EfNutritionPlanRepository>();
+builder.Services.AddScoped<IPlanTemplateRepository, EfPlanTemplateRepository>();
+builder.Services.AddScoped<IMealLogRepository, EfMealLogRepository>();
+builder.Services.AddScoped<IAppointmentRepository, EfAppointmentRepository>();
+builder.Services.AddScoped<INotificationRepository, EfNotificationRepository>();
 
 builder.Services.AddSingleton<IPasswordHasher, AspNetPasswordHasher>();
 builder.Services.AddScoped<ITokenService, JwtTokenService>();
@@ -132,6 +159,37 @@ builder.Services.AddScoped<IPaymentGateway, FakePaymentAdapter>();   // ilk sür
 builder.Services.AddScoped<IEmailSender, SmtpEmailAdapter>();
 builder.Services.AddOptions<SmtpOptions>().BindConfiguration(SmtpOptions.SectionName);
 builder.Services.AddSingleton(TimeProvider.System);   // testlerde FakeTimeProvider takılır
+
+// Besin kaynakları (Adapter, Şekil 4.9): aynı port, iki adapter; hangisinin nereye gideceği anahtarla seçilir.
+// Yeni kaynak eklemek = yeni adapter + buraya bir kayıt (NFR-B1).
+builder.Services.AddOptions<UsdaOptions>().BindConfiguration(UsdaOptions.SectionName);
+builder.Services.AddHttpClient<UsdaFdcClient>((serviceProvider, client) =>
+{
+    var usda = serviceProvider.GetRequiredService<IOptions<UsdaOptions>>().Value;
+    client.BaseAddress = new Uri(usda.BaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(usda.TimeoutSeconds);   // ADR-0004: 3 sn
+});
+builder.Services.AddSingleton<ApiQuotaCounter>();
+builder.Services.AddKeyedScoped<NutritionDataPort, LocalNutritionDataAdapter>("local");
+builder.Services.AddKeyedScoped<NutritionDataPort, UsdaFoodDataCentralAdapter>("usda");
+
+// Fotoğraf deposu (SeaweedFS, S3 uyumlu), push (FCM) ve PDF (QuestPDF)
+builder.Services.AddOptions<StorageOptions>().BindConfiguration(StorageOptions.SectionName);
+builder.Services.AddSingleton<IPhotoStorage, S3PhotoStorageAdapter>();
+builder.Services.AddOptions<FcmOptions>().BindConfiguration(FcmOptions.SectionName);
+builder.Services.AddSingleton<IPushNotificationSender, FcmPushAdapter>();
+builder.Services.AddSingleton<IReportPdfRenderer, QuestPdfReportRenderer>();
+
+// Domain event'ler (Observer, Şekil 4.11): EfUnitOfWork kayıttan sonra dispatcher'a verir, dispatcher abonelere.
+builder.Services.AddScoped<DomainEventDispatcher>();
+builder.Services.AddScoped<IDomainEventHandler<PlanPublished>, PlanPublishedHandler>();
+builder.Services.AddScoped<IDomainEventHandler<AppointmentEvent>, AppointmentNotificationHandler>();
+
+// Domain servisleri ve enerji stratejileri (Strategy, Şekil 4.7): yeni formül = yeni strateji + bir satır kayıt.
+builder.Services.AddSingleton<AvailabilityService>();
+builder.Services.AddSingleton<IEnergyStrategy, MifflinStJeorStrategy>();
+builder.Services.AddSingleton<IEnergyStrategy, HarrisBenedictStrategy>();
+builder.Services.AddSingleton<EnergyCalculator>();
 
 // E-postadaki bağlantıların açılacağı web adresi
 builder.Services.AddSingleton(serviceProvider => new AppLinks(
@@ -143,8 +201,23 @@ builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
 builder.Services.AddScoped<IClientService, ClientService>();
 builder.Services.AddScoped<IMeasurementService, MeasurementService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
+builder.Services.AddScoped<IFoodService, FoodService>();
+builder.Services.AddScoped<IFoodSearchService>(serviceProvider => new FoodSearchService(
+    serviceProvider.GetRequiredKeyedService<NutritionDataPort>("local"),
+    serviceProvider.GetRequiredKeyedService<NutritionDataPort>("usda"),
+    serviceProvider.GetRequiredService<IFoodItemRepository>(),
+    serviceProvider.GetRequiredService<IUnitOfWork>(),
+    serviceProvider.GetRequiredService<ICurrentUser>()));
+builder.Services.AddScoped<IEnergyService, EnergyService>();
+builder.Services.AddScoped<IPlanService, PlanService>();
+builder.Services.AddScoped<ITemplateService, TemplateService>();
+builder.Services.AddScoped<IMealLogService, MealLogService>();
+builder.Services.AddScoped<IAppointmentService, AppointmentService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IReminderService, ReminderService>();
+builder.Services.AddScoped<IReportService, ReportService>();
 
-// Zamanlanmış iş (sürücü adapter): 10 dakikada bir süresi dolan abonelikler (ileride hatırlatmalar da)
+// Zamanlanmış iş (sürücü adapter): 10 dakikada bir hatırlatmalar ve süresi dolan abonelikler
 builder.Services.AddHostedService<ReminderWorker>();
 
 var app = builder.Build();
@@ -170,6 +243,7 @@ if (app.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
 {
     await app.Services.ApplyMigrationsAsync();
     await app.Services.SeedAdminAsync();   // Seed:AdminEmail ve Seed:AdminPassword ayarlıysa ilk yönetici
+    await app.Services.SeedSharedFoodsAsync();   // hiç yoksa ortak (hazır) besinler
 }
 
 app.UseAuthentication();

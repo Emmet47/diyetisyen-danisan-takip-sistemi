@@ -1,3 +1,4 @@
+using Ddts.Application.Abstractions.Nutrition;
 using Ddts.Application.Common;
 using Ddts.Domain.Common;
 using Ddts.Domain.Subscriptions;
@@ -38,7 +39,12 @@ public sealed class ProblemDetailsExceptionHandler(IProblemDetailsService proble
         // Sıra önemli: SubscriptionLimitException bir DomainException olduğu için önce gelir.
         SubscriptionLimitException e => Problem(StatusCodes.Status409Conflict, "Paket limiti dolu", e.Message,
             "https://ddts.example/errors/subscription-limit"),
+        SlotTakenException e => Problem(StatusCodes.Status409Conflict, "Bu saat az önce doldu", e.Message),
         ConflictException e => Problem(StatusCodes.Status409Conflict, "Çakışma", e.Message),
+        ForbiddenException e => Problem(StatusCodes.Status403Forbidden, "Bu işlem için yetkin yok", e.Message),
+        InvalidPhotoException e => Problem(StatusCodes.Status400BadRequest, "Geçersiz dosya", e.Message),
+        ExternalSourceUnavailableException => Problem(StatusCodes.Status503ServiceUnavailable, "Dış kaynak kullanılamıyor",
+            "Dış besin kaynağına şu an ulaşılamıyor. Biraz sonra tekrar dene ya da yerel kayıtları kullan."),
         NotFoundException e => Problem(StatusCodes.Status404NotFound, "Bulunamadı", e.Message),
         AuthenticationFailedException e => Problem(StatusCodes.Status401Unauthorized, "Giriş başarısız", e.Message),
         DomainException e => DomainProblem(e),
