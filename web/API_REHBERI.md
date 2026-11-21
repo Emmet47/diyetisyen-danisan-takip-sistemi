@@ -68,7 +68,7 @@ Parola sıfırlama e-postaları gerçek adrese gitmez, Mailpit'e düşer: http:/
 | 404 | Kayıt yok ya da başkasına ait | "Bulunamadı" mesajı |
 | 409 | Durum çakışması (paket limiti dolu, saat dolu ...) | `title` + `detail` mesajını göster (ör. "Bu saat az önce doldu. Lütfen başka bir saat seç.") |
 | 429 | Çok fazla giriş denemesi | "Biraz sonra tekrar deneyin" |
-| 503 | Dış kaynak (USDA) yok, ör. besin içe aktarma | "Biraz sonra tekrar dene" |
+| 503 | Dış kaynak (PlateRank, USDA) yok, ör. besin içe aktarma | "Biraz sonra tekrar dene" |
 
 `src/api/http.ts` bu mesajları kendisi üretir: `detail` varsa onu, yoksa durum koduna göre Türkçe hazır metni kullanır. Sayfada yalnızca `errorText(hata)` (src/ui.tsx) göster.
 
@@ -137,7 +137,7 @@ setToken(sonuc.accessToken)   // bundan sonraki tüm istekler bu token'la gider
 ## 6. Kurallar
 
 - Adresleri hep `/api/...` diye yaz, `http://localhost:8080` yazma. Geliştirmede Vite, Docker'da nginx doğru yere iletir.
-- API anahtarı (USDA vb.) web koduna asla girmez; onlar yalnızca API'de durur.
+- API anahtarı (USDA, PlateRank, DeepL vb.) web koduna asla girmez; onlar yalnızca API'de durur.
 - Tarih-saatler API'de UTC ve ISO 8601 biçiminde (`2026-12-01T07:00:00Z`); ekranda Türkiye saatine çevirip göster.
 - Uzun listeler sayfalı: `?page=1&pageSize=20` (sayfa boyutu en fazla 100). Sayfalı yanıtın biçimi: `{ items: [...], page, pageSize, totalCount }`; toplam sayfa = `Math.ceil(totalCount / pageSize)`.
 - Yönetici sayfaları (`/api/admin/...`) için giriş: yerelde user-secrets'taki `Seed:AdminEmail` / `Seed:AdminPassword`, Docker'da `.env`'deki `ADMIN_EMAIL` / `ADMIN_PASSWORD` ile `POST /api/auth/login`.
@@ -145,7 +145,8 @@ setToken(sonuc.accessToken)   // bundan sonraki tüm istekler bu token'la gider
 - Ölçüm geçmişi (`GET /api/clients/{id}/measurements`, mobilde `GET /api/me/measurements`) şu biçimde döner: `{ targetWeightKg, remainingKg, items: [...] }`. `items` eskiden yeniye sıralı (grafik bu sırayla çizilir); her satırda bir önceki ölçüme göre fark var (`weightChangeKg`, `waistChangeCm` ..., ilk satırda `null`). `targetWeightKg` grafikteki hedef çizgisi, `remainingKg` hedefe kalan kilo. Aynı gün ikinci ölçüm 409 döner: kullanıcıya o günkü ölçümü düzenlemesini söyle (`PUT .../measurements/{measurementId}`).
 - **Saatler:** randevu zamanları UTC gider/gelir (sonu `Z`): `2026-12-01T07:00:00Z` = 1 Aralık 10:00 Türkiye saati. Ekranda göstermek için 3 saat ekle (`new Date(...)` tarayıcıda bunu kendisi yapar). Öğün saati ve çalışma saati ise Türkiye saatidir ve `"08:00:00"` biçiminde yazılır.
 - **Plan / şablon gövdesi:** `meals: [{ dayNo: 1, name: "Kahvaltı", time: "08:00:00", items: [{ foodItemId, portionCount: 2, alternatives: [{ foodItemId, portionCount: 1 }] }] }]`. Günlük planda `dayNo` hep 1; haftalık planda 1 = Pazartesi … 7 = Pazar. Hatalı plan 400 döner ve `errors.genel` listesinde bütün hatalar birlikte gelir; sevmediği besin gibi uyarılar 201 yanıtının `warnings` listesindedir.
-- **Besin arama:** `GET /api/foods?q=yulaf&external=true`. Türkçe yazılabilir; API, USDA'ya giderken sözlükle İngilizceye çevirir. `q` boşsa bütün yerel besinler (en fazla 100) gelir. `externalUnavailable: true` gelirse `message`'ı sarı uyarı olarak göster; liste yine yerel sonuçlarla dolu gelir. Dış kaynaktan gelen satırda `id` boş, `externalId` dolu: plana eklemeden önce `POST /api/foods/import` ile aktar (Türkçe ad verebilirsin), dönen `id`'yi kullan.
+- **Besin arama:** `GET /api/foods?q=mercimek&external=true`. Dış kaynaklar PlateRank (Türk yemekleri, adlar Türkçe) ve USDA. Türkçe yazılabilir; API, USDA'ya giderken sorguyu DeepL ile İngilizceye, gelen adları Türkçeye çevirir (DeepL anahtarı yoksa çevirmeden arar). `source=Yerel|PlateRank|USDA` ile süzülür. `q` boşsa bütün yerel besinler (en fazla 100) gelir. `externalUnavailable: true` gelirse `message`'ı sarı uyarı olarak göster; liste yine yerel ve çalışan kaynağın sonuçlarıyla dolu gelir. Dış kaynaktan gelen satırda `id` boş, `externalId` dolu: plana eklemeden önce `POST /api/foods/import` ile aktar (`{ externalId, source: satırın sourceName'i, name, portionName, portionGrams }`), dönen `id`'yi kullan.
+- **Porsiyon başına değerler:** PlateRank'teki Türk yemeklerinde porsiyonun gramı yok; bu satırlarda `valuesPerPortion: true`, `portionGrams: 0` ve enerji/makro alanları **1 porsiyon** içindir. Tabloda "/ porsiyon" yaz; aktarırken `portionGrams` zorunlu (girilmezse 400), API değerleri 100 g'a çevirir. PlateRank satırı gösterilen yerde atıf yaz: "PlateRank (platerank.dev), CC BY 4.0".
 - **Öğün fotoğrafı:** `POST /api/me/meal-logs/{id}/photo`, `multipart/form-data`, alan adı `file`. Yalnızca JPEG/PNG, en fazla 5 MB. Görüntülemek için `GET /api/meal-logs/{id}/photo-url` → `{ url, expiresAt }` (10 dakika geçerli; süresi dolunca yeniden iste).
 - **Bildirimler:** `GET /api/notifications?page=1&pageSize=20` (sayfalı, en yenisi önce), okununca `POST /api/notifications/{id}/read`.
 - **Demo verisi:** panelde koda gömülü örnek veri yok (NFR-D1). Denemek için hesabı "Hesap oluştur" ile aç, danışan, besin ve planları sahte bilgilerle (`@ornek.test`, "Deneme Danışan") arayüzden gir.
