@@ -8,12 +8,14 @@ namespace Ddts.Infrastructure.Nutrition;
 
 /// <summary>
 /// Yerel veritabanı adapter'ı (Şekil 4.9). Diyetisyenin göreceği kayıtlar: ortak besinler + kendi kayıtları
-/// (USDA'dan aktardıkları dahil). Ad üzerinde büyük/küçük harf duyarsız arama (PostgreSQL ILIKE).
+/// (PlateRank ve USDA'dan aktardıkları dahil). Ad üzerinde büyük/küçük harf duyarsız arama (PostgreSQL ILIKE).
 /// Bu kayıtları bir diyetisyen girdiği ya da kontrol edip kaydettiği için "doğrulanmış kayıt" sayıyoruz (FR-D4).
 /// </summary>
 public sealed class LocalNutritionDataAdapter(DdtsDbContext db, ICurrentUser currentUser) : NutritionDataPort
 {
     public string SourceName => "Yerel";
+
+    public string LanguageCode => "tr";
 
     public async Task<IReadOnlyList<NutritionItem>> SearchAsync(string query, int limit, CancellationToken cancellationToken = default)
     {
