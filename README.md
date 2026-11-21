@@ -12,7 +12,7 @@ Ddts.sln
 │   ├── Ddts.Domain/          # varlıklar, değer nesneleri, iş kuralları, domain event'ler
 │   │                         # Composite, Builder, Strategy, Prototype (hiçbir pakete bağlı değil)
 │   ├── Ddts.Application/     # use case servisleri, port arayüzleri, event handler'lar
-│   ├── Ddts.Infrastructure/  # EF Core, USDA, SeaweedFS (S3), FCM, SMTP, QuestPDF, sahte ödeme
+│   ├── Ddts.Infrastructure/  # EF Core, PlateRank, USDA, DeepL çeviri, SeaweedFS (S3), FCM, SMTP, QuestPDF, sahte ödeme
 │   └── Ddts.Api/             # REST controller'lar, JWT, ReminderWorker, Program.cs (+ Dockerfile)
 ├── tests/
 │   ├── Ddts.UnitTests/
@@ -110,7 +110,10 @@ Parola sıfırlama bütün roller için aynı sayfadır: web'de "Parolamı unutt
    dotnet user-secrets set "Seed:AdminEmail" "admin@ornek.test" --project src/Ddts.Api
    dotnet user-secrets set "Seed:AdminPassword" "<ADMIN_PASSWORD>" --project src/Ddts.Api
    dotnet user-secrets set "Usda:ApiKey" "<USDA anahtarı, varsa>" --project src/Ddts.Api
+   dotnet user-secrets set "PlateRank:ApiKey" "<PlateRank anahtarı, varsa>" --project src/Ddts.Api
+   dotnet user-secrets set "DeepL:ApiKey" "<DeepL anahtarı, varsa>" --project src/Ddts.Api
    ```
+   - Dış besin kaynakları ve çeviri isteğe bağlıdır; anahtarı boş olan kapalı kalır, arama yerel kayıtlarla çalışır. Anahtarların nereden alınacağı `.env.example` içinde yazıyor (ADR-0007).
    - `Jwt:SigningKey` en az 32 karakter olmalı; boş ya da kısa olursa API açılmaz. Rastgele üretmek için PowerShell: `$b = New-Object byte[] 48; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); [Convert]::ToBase64String($b)`
    - `Seed:*` ayarları ilk açılışta platform yöneticisi hesabını oluşturur (zaten bir yönetici varsa dokunmaz).
 3. Çalıştırın: `dotnet watch --project src/Ddts.Api` (veya Visual Studio / Rider'dan) → http://localhost:8080/scalar

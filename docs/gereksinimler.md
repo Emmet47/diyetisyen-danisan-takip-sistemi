@@ -36,9 +36,9 @@ Gereksinimleri hocamızın A–L modüllerine göre gruplandırdık. Her satırd
 
 | Kod | Gereksinim | Doğrulama |
 | --- | --- | --- |
-| FR-D1 | Diyetisyen besinleri ada göre arar ve kaynağa göre (Yerel / USDA) filtreler. Sonuçlarda porsiyon, 100 g'daki enerji, protein, karbonhidrat ve yağ değerleri ile veri kaynağı ve güncellik tarihi görünür. | KT-06 |
+| FR-D1 | Diyetisyen besinleri ada göre arar ve kaynağa göre (Yerel / PlateRank / USDA) filtreler. Sonuçlarda porsiyon, 100 g'daki enerji, protein, karbonhidrat ve yağ değerleri ile veri kaynağı ve güncellik tarihi görünür. | KT-06 |
 | FR-D2 | Diyetisyen yerel besin ekler, düzenler, siler (yalnızca kendi kayıtlarını). Ortak (hazır yüklenen) besinleri herkes kullanır ama kimse düzenleyemez. Bir plan ya da şablonda kullanılan besin silinemez. | DB-16 |
-| FR-D3 | Diyetisyen dış kaynakta (USDA FoodData Central) arama yapar; seçtiği sonucu değerlerini kontrol ederek yerel veritabanına aktarır. Dış kaynağın yanıtı Adapter ile sistemin standart NutritionItem modeline çevrilir. | DB-19, KT-06 |
+| FR-D3 | Diyetisyen dış kaynaklarda (Türk yemekleri için PlateRank, genel besinler için USDA FoodData Central) arama yapar; seçtiği sonucu değerlerini kontrol ederek yerel veritabanına aktarır. Dış kaynağın yanıtı Adapter ile sistemin standart NutritionItem modeline çevrilir. Türkçe arama USDA'ya giderken İngilizceye, gelen adlar Türkçeye çevrilir. Kaynak porsiyonun gramını vermiyorsa diyetisyen aktarırken gramı girer, değerler 100 g'a çevrilir. | DB-19, KT-06 |
 | FR-D4 | Dış API erişilemezse (zaman aşımı, hata, kota dolu) sistem çökmez; kullanıcıya uyarı gösterip yerel kayıtlarla devam eder. Yerel kayıtları, bir diyetisyen tarafından girildiği ya da kontrol edilip kaydedildiği için “doğrulanmış kayıt” kabul ediyoruz. | IT-07 |
 
 **E. Öğün ve Beslenme Planı**
@@ -139,7 +139,7 @@ Derste gördüğümüz gibi “hızlı olsun, güvenli olsun” gibi belirsiz c�
 | NFR-G2 | Güvenlik – oturum ve parola | Tüm trafik HTTPS; parolalar PBKDF2 ile hash'lenir (ASP.NET Core PasswordHasher); JWT 60 dakika geçerli; giriş ucuna IP başına dakikada en fazla 5 deneme. | 6. denemede 429 (IT-04); HTTP istekleri HTTPS'e yönlenir. |
 | NFR-G3 | Güvenlik – fotoğraf | Yalnızca JPEG/PNG, en fazla 5 MB; depo (bucket) herkese kapalı; görüntüleme bağlantısı 10 dakika geçerli. | IT-09, IT-10 |
 | NFR-G4 | Güvenlik – denetim izi | FR-A5'teki işlemlerin hepsi kimin, ne zaman, ne yaptığıyla kaydedilir. | IT-12 |
-| NFR-G5 | Güvenlik – gizli anahtarlar | USDA API anahtarı, JWT imza anahtarı ve FCM kimlik bilgileri yalnızca sunucuda (ortam değişkeni / user-secrets) durur; koda, Git'e ve istemcilere girmez. | Kod incelemesi; istemciler USDA'yı hiç doğrudan çağırmaz. |
+| NFR-G5 | Güvenlik – gizli anahtarlar | USDA, PlateRank ve DeepL API anahtarları, JWT imza anahtarı ve FCM kimlik bilgileri yalnızca sunucuda (ortam değişkeni / user-secrets) durur; koda, Git'e ve istemcilere girmez. | Kod incelemesi; istemciler dış API'leri hiç doğrudan çağırmaz. |
 | NFR-E1 | Hata toleransı | Dış besin API'si yanıt vermezse arama en geç 4 saniyede (3 sn zaman aşımı + yerel arama) yerel sonuçlarla döner; kullanıcı 500 hatası görmez. | IT-07 |
 | NFR-P1 | Performans | Danışan listesi ve yerel besin araması, demo verisinde (2 diyetisyen, 60 danışan, 5.000 besin) ve 20 eşzamanlı kullanıcıyla p95 < 500 ms. | Basit yük testi (k6 aracıyla). |
 | NFR-B1 | Bakım – değiştirilebilirlik | Yeni besin kaynağı = yeni bir adapter sınıfı + DI kaydı; yeni enerji formülü = yeni bir strateji sınıfı. Domain ve Application projelerinde değişiklik gerekmez. | Kod incelemesi + AT-01 |
@@ -153,7 +153,7 @@ En önemli dört NFR'yi dersteki altı parçalı kalite senaryosu kalıbıyla ya
 
 | Nitelik | Kaynak | Uyarıcı | Ortam | Artefakt | Yanıt | Yanıt ölçüsü |
 | --- | --- | --- | --- | --- | --- | --- |
-| Erişilebilirlik / hata toleransı | USDA servisi | Yanıt vermiyor ya da 429 dönüyor | Normal çalışma | Besin arama (FoodSearchService) | Hata loglanır, kullanıcıya uyarı gösterilir, yerel sonuçlar döner | ≤ 4 sn, HTTP 200, 0 çökme |
+| Erişilebilirlik / hata toleransı | USDA ya da PlateRank servisi | Yanıt vermiyor ya da 429 dönüyor | Normal çalışma | Besin arama (FoodSearchService) | Hata loglanır, kullanıcıya uyarı gösterilir, yerel ve çalışan kaynağın sonuçları döner | ≤ 4 sn, HTTP 200, 0 çökme |
 | Güvenlik | Diyetisyen B | A'nın danışanının id'sini adrese yazıyor | Geçerli oturumla, normal çalışma | Danışan, ölçüm, plan ve fotoğraf uçları | İstek reddedilir, kaydın varlığı bile belli edilmez | %100 istekte 404 |
 | Veri bütünlüğü | İki danışan | Aynı diyetisyenin aynı slotuna aynı anda talep gönderiyor | Eşzamanlı istekler | Randevu servisi + veritabanı | Biri kaydedilir, diğerine “bu saat doldu” denir | 1 × 201, 1 × 409, 0 çift kayıt |
 | Bakım yapılabilirlik | Geliştirici | İkinci bir dış besin kaynağı eklemek istiyor | Geliştirme zamanı | NutritionDataPort | Yeni adapter yazılır, Program.cs'te kaydedilir | Domain/Application'da 0 satır değişiklik, ≤ 1 geliştirici-günü |

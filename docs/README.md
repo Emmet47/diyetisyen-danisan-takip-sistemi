@@ -16,7 +16,7 @@ Klasörler gereksinim belgesinin "10.2 Teknik çıktılar tablosu"ndaki "Repodak
 | `uml/png/`, `uml/svg/` | Aynı diyagramların çizilmiş halleri (belgeye eklenenler PNG) | |
 | `db/schema.sql` | Referans veritabanı şeması, 17 tablo | Bölüm 6 |
 | `db/constraints_test.py`, `db/test_sonucu.txt` | 33 kısıt testi ve son çalıştırmanın çıktısı | Bölüm 9.4 |
-| `adr/` | Mimari karar kayıtları (ADR-0001…0006) | Bölüm 7.7 |
+| `adr/` | Mimari karar kayıtları (ADR-0001…0007) | Bölüm 7.7 |
 | `api.md` | REST API dokümantasyonu, örnek istek/yanıtlar, rol-yetki matrisi | Bölüm 8 |
 
 ## Kod yazarken

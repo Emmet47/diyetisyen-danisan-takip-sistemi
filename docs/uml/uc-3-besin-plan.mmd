@@ -1,7 +1,8 @@
 usecase-beta
 direction LR
 actor Diyetisyen("Diyetisyen")
-actor DisApi("Dış Besin API (USDA)")
+actor DisApi("Dış Besin API (PlateRank, USDA)")
+actor Ceviri("Çeviri Servisi (DeepL)")
 actor Bildirim("Bildirim Servisi (FCM)")
 systemBoundary DDTS["Diyetisyen: Besin ve Plan"]
   UC16("UC-16 Besin Ara")
@@ -25,4 +26,5 @@ Diyetisyen -- UC24
 UC17 ..>:extend UC16
 UC20 ..>:include UC16
 UC17 -- DisApi
+UC17 -- Ceviri
 UC21 -- Bildirim

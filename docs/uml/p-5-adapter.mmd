@@ -4,26 +4,44 @@ class FoodSearchService {
   <<Client>>
   +SearchAsync(query: string, source: string [0..1], includeExternal: bool) FoodSearchResult
   +ImportAsync(cmd: ImportFoodCommand) Guid
+  -SearchExternalAsync(source: NutritionDataPort, query: string) NutritionItem[0..#42;] [0..1]
+  -TranslateNamesAsync(source: NutritionDataPort, names: string[0..#42;]) string[0..#42;]
 }
 class NutritionDataPort {
   <<interface · Target / Port>>
   +SourceName: string
+  +LanguageCode: string
   +SearchAsync(query: string, limit: int) NutritionItem[0..#42;]
   +GetByExternalIdAsync(externalId: string) NutritionItem [0..1]
 }
 class LocalNutritionDataAdapter {
   <<Adapter · yerel DB>>
   +SourceName: string = "Yerel"
+  +LanguageCode: string = "tr"
   +SearchAsync(query: string, limit: int) NutritionItem[0..#42;]
   +GetByExternalIdAsync(externalId: string) NutritionItem [0..1]
+}
+class PlateRankAdapter {
+  <<Adapter · dış API>>
+  +SourceName: string = "PlateRank"
+  +LanguageCode: string = "tr"
+  +SearchAsync(query: string, limit: int) NutritionItem[0..#42;]
+  +GetByExternalIdAsync(externalId: string) NutritionItem [0..1]
+  -Map(dto: PlateRankDishDto) NutritionItem [0..1]
 }
 class UsdaFoodDataCentralAdapter {
   <<Adapter · dış API>>
   +SourceName: string = "USDA FoodData Central"
+  +LanguageCode: string = "en"
   +SearchAsync(query: string, limit: int) NutritionItem[0..#42;]
   +GetByExternalIdAsync(externalId: string) NutritionItem [0..1]
   -Map(dto: FdcFoodDto) NutritionItem
-  -TranslateQuery(query: string) string
+}
+class PlateRankClient {
+  <<Adaptee>>
+  +IsConfigured: bool
+  +SearchDishesAsync(query: string, limit: int) PlateRankDishDto[0..#42;]
+  +GetDishAsync(id: Guid) PlateRankDishDto [0..1]
 }
 class UsdaFdcClient {
   <<Adaptee>>
@@ -32,9 +50,21 @@ class UsdaFdcClient {
   +GetFoodAsync(fdcId: int) FdcFoodDto [0..1]
 }
 class ApiQuotaCounter {
-  <<singleton>>
-  -limitPerHour: int
+  <<singleton · kaynak başına>>
+  -hourlyQuota: int
   +TryConsume() bool
+}
+class PlateRankDishDto {
+  +Id: Guid
+  +Name: string [0..1]
+  +Cuisine: string [0..1]
+  +EnergyKcal: decimal [0..1]
+  +Protein: decimal [0..1]
+  +Carbs: decimal [0..1]
+  +Fat: decimal [0..1]
+  +PortionGrams: decimal [0..1]
+  +Source: string [0..1]
+  +UpdatedAt: DateTimeOffset [0..1]
 }
 class FdcFoodDto {
   +FdcId: int
@@ -54,11 +84,16 @@ class NutritionItem {
   +SourceName: string
   +ExternalId: string [0..1]
   +RetrievedAt: DateTime [0..1]
+  +ValuesPerPortion: bool = false
 }
 class FoodSearchResult {
   +Items: NutritionItem[0..#42;]
   +ExternalUnavailable: bool
   +Message: string [0..1]
+}
+class ITranslator {
+  <<interface · giden port>>
+  +TranslateAsync(texts: string[0..#42;], sourceLanguage: string, targetLanguage: string) string[0..#42;]
 }
 class DdtsDbContext {
   <<EF Core DbContext>>
@@ -70,14 +105,22 @@ class IFoodItemRepository {
   +Add(food: FoodItem) void
 }
 NutritionDataPort <|.. LocalNutritionDataAdapter
+NutritionDataPort <|.. PlateRankAdapter
 NutritionDataPort <|.. UsdaFoodDataCentralAdapter
-FoodSearchService "1" --> "2" NutritionDataPort : yerel + dış kaynak (keyed DI)
+FoodSearchService "1" --> "1..*" NutritionDataPort : yerel + dış kaynaklar (keyed DI)
+FoodSearchService --> ITranslator : dili Türkçe olmayan kaynakta sorgu ve ad çevirisi
 FoodSearchService --> IFoodItemRepository : içe aktarılan besini kaydeder
 LocalNutritionDataAdapter --> DdtsDbContext : yerel kayıtları okur (EF Core)
+PlateRankAdapter --> PlateRankClient : çağırır
+PlateRankAdapter --> ApiQuotaCounter : kota
 UsdaFoodDataCentralAdapter --> UsdaFdcClient : çağırır
 UsdaFoodDataCentralAdapter --> ApiQuotaCounter : kota
+PlateRankClient ..> PlateRankDishDto : JSON yanıtı
 UsdaFdcClient ..> FdcFoodDto : JSON yanıtı
+PlateRankAdapter ..> NutritionItem : «create» (dönüştürür)
 UsdaFoodDataCentralAdapter ..> NutritionItem : «create» (dönüştürür)
 FoodSearchService ..> FoodSearchResult : «create»
-note for UsdaFoodDataCentralAdapter "Zaman aşımı 3 sn. Hata, 429 ya da kota dolu ise<br>ExternalSourceUnavailableException fırlatır;<br>FoodSearchService yerel sonuçlarla devam eder."
+note for PlateRankAdapter "Türk yemekleri, adlar Türkçe. Değerler porsiyon başına:<br>gram biliniyorsa 100 g'a çevrilir, bilinmiyorsa<br>ValuesPerPortion = true (aktarırken gram istenir)."
+note for UsdaFoodDataCentralAdapter "Zaman aşımı 3 sn. Hata, 429 ya da kota dolu ise<br>ExternalSourceUnavailableException fırlatır;<br>FoodSearchService diğer sonuçlarla devam eder."
+note for PlateRankClient "Salt-okunur uç (CC BY 4.0, atıfla). Anahtar yalnızca sunucuda,<br>apikey başlığıyla gider. McDonald's ve Open Food Facts<br>satırları lisans nedeniyle sorguda istenmez."
 note for UsdaFdcClient "API anahtarı yalnızca sunucuda (ortam değişkeni / user-secrets),<br>X-Api-Key başlığıyla gider; adreste ve loglarda görünmez"
