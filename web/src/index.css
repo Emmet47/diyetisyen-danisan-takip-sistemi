@@ -89,6 +89,15 @@
   .account small { color:var(--muted); font-size:.76rem; }
   .menu-button, .nav-overlay { display:none; }
   .notification-button { position:relative; }
+  .gram-input { display:inline-flex; align-items:center; gap:4px; }.gram-input input { width:76px; min-height:30px; padding:3px 6px; }
+  .picker-list { max-height:260px; overflow:auto; gap:4px; }
+  .clickable { cursor:pointer; }.clickable:hover { border-color:#b9d3bf; }
+  .photo-view { display:block; max-width:min(78vw,720px); max-height:70vh; margin:0 auto; border-radius:8px; object-fit:contain; }
+  .week-grid { display:grid; grid-template-columns:repeat(7,minmax(210px,1fr)); gap:10px; overflow-x:auto; padding-bottom:6px; align-items:start; }
+  .week-day { display:flex; flex-direction:column; gap:8px; min-width:0; }.week-day>h3 { margin:0; font-size:.95rem; }
+  .week-day .record { padding:10px; min-width:0; }.week-day .toolbar.flush { flex-direction:column; align-items:stretch; gap:6px; }
+  .week-day .toolbar.flush>* { flex:none; }.week-day .field, .week-day .field input, .week-day .field select { width:100%; min-width:0; }
+  .week-day .list-line { flex-wrap:wrap; gap:4px; }.week-day .gram-input input { width:64px; }
   .notification-button i { position:absolute; top:5px; right:6px; width:6px; height:6px; border-radius:50%; background:#a96c31; border:1px solid #fff; }
   .page-title { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px; margin:2px 0 3px; }
   .page-title p { margin-top:7px; color:var(--muted); font-size:1rem; }
@@ -179,6 +188,7 @@
   .empty button { margin-top:8px; }
   dialog { width:min(660px, calc(100% - 30px)); max-height:calc(100dvh - 38px); border:1px solid var(--line); border-radius:15px; padding:19px; background:#fff; color:var(--ink); box-shadow:0 24px 68px #14271b3f; }
   dialog::backdrop { background:#162a2263; }
+  dialog.wide { width:min(1500px, calc(100% - 30px)); }
   .modal-title { display:flex; align-items:center; justify-content:space-between; gap:10px; padding-bottom:13px; margin-bottom:13px; border-bottom:1px solid var(--line); }
   .modal-title h2 { font-size:1.32rem; }
   .tabs, .steps { display:flex; flex-wrap:wrap; gap:6px; }
@@ -214,6 +224,10 @@
   }
   @media(max-width:620px) {
     .workspace-main { padding:15px 11px 28px; gap:12px; }.metrics { grid-template-columns:repeat(2,minmax(0,1fr)); }.overview-grid,.overview-grid.equal { grid-template-columns:1fr; }.top-context>span { display:none; }.topbar { padding:7px 11px; }.top-context,.top-actions { gap:6px; }.account>div { display:none; }.date-pill { padding:6px 8px; }.form-grid { grid-template-columns:1fr; }.auth-card { padding:20px; }.row-actions>* + * { margin-left:5px; } th,td { padding-inline:9px; }
+  }
+  /* Geniş ekranda ☰ ile sol menü gizlenir, içerik tüm genişliği kullanır. */
+  @media(min-width:901px) {
+    .shell.nav-collapsed { grid-template-columns:minmax(0,1fr); }.shell.nav-collapsed .sidebar { display:none; }
   }
   @media print {
     body { background:#fff; }.shell { display:block; }.workspace { display:block; }.sidebar,.topbar,.workspace-main>*,dialog>.modal-title,dialog>.form-actions { display:none!important; }.workspace-main { display:block; padding:0; }.workspace-main>dialog[open] { display:block!important; position:static; width:100%; max-height:none; border:0; box-shadow:none; margin:0; }.workspace-main>dialog::backdrop { display:none; }
