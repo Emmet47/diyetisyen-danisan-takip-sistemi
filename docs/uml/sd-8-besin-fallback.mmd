@@ -5,35 +5,54 @@ participant W as Web Paneli (React)
 participant API as :FoodsController
 participant S as :FoodSearchService
 participant L as :LocalNutritionDataAdapter
+participant P as :PlateRankAdapter
 participant U as :UsdaFoodDataCentralAdapter
+participant T as :DeepLTranslationAdapter
 participant Q as :ApiQuotaCounter
-participant FDC as USDA FoodData Central API
-D->>W: "oats" arar, "dış kaynakta da ara" seçili
-W->>API: GET /api/foods?q=oats&external=true
-API->>S: SearchAsync("oats", includeExternal: true)
-S->>L: SearchAsync("oats", 20)
+participant EXT as PlateRank API / USDA FoodData Central API
+D->>W: "mercimek" arar, "dış kaynaklarda da ara" seçili
+W->>API: GET /api/foods?q=mercimek&external=true
+API->>S: SearchAsync("mercimek", includeExternal: true)
+S->>L: SearchAsync("mercimek", 100)
 L-->>S: yerel sonuçlar (ortak + diyetisyenin kendi kayıtları)
-S->>U: SearchAsync("oats", 20)
-U->>Q: TryConsume()
-alt saatlik kota dolu
-  Q-->>U: false
-  U-->>S: ExternalSourceUnavailableException
-else kota var
-  U->>FDC: GET /fdc/v1/foods/search?query=oats (API anahtarı sunucuda, zaman aşımı 3 sn)
-  alt zaman aşımı, 5xx ya da 429
-    FDC--xU: hata
+par PlateRank (adlar Türkçe, çeviri yok)
+  S->>P: SearchAsync("mercimek", 20)
+  P->>Q: TryConsume() (PlateRank kotası)
+  P->>EXT: GET yemekler?ad=ilike.*mercimek* (anahtar sunucuda, zaman aşımı 3 sn)
+  alt kota dolu, zaman aşımı, 5xx ya da 429
+    P-->>S: ExternalSourceUnavailableException
+  else 200 OK
+    EXT-->>P: JSON (ad, kcal, protein, karbonhidrat, yağ, porsiyon_g)
+    P->>P: Map(dto) → NutritionItem (gram yoksa ValuesPerPortion = true)
+    P-->>S: NutritionItem listesi
+  end
+and USDA (adlar İngilizce)
+  S->>T: TranslateAsync(["mercimek"], "tr", "en")
+  alt anahtar yok, kota dolu (456) ya da hata
+    T-->>S: ["mercimek"] (olduğu gibi)
+  else 200 OK ya da bellekte var
+    T-->>S: ["lentils"]
+  end
+  S->>U: SearchAsync("lentils", 20)
+  U->>Q: TryConsume() (USDA kotası)
+  U->>EXT: GET /fdc/v1/foods/search?query=lentils (API anahtarı sunucuda, zaman aşımı 3 sn)
+  alt kota dolu, zaman aşımı, 5xx ya da 429
     U-->>S: ExternalSourceUnavailableException
   else 200 OK
-    FDC-->>U: JSON (fdcId, description, foodNutrients)
+    EXT-->>U: JSON (fdcId, description, foodNutrients)
     U->>U: Map(dto) → NutritionItem (kaynak adı + çekilme zamanı)
     U-->>S: NutritionItem listesi
+    S->>T: TranslateAsync(adlar, "en", "tr")
+    T-->>S: Türkçe adlar (çevrilemezse İngilizce kalır)
   end
 end
-alt dış kaynak kullanılamadı
-  S->>S: hatayı logla (ayrıntı kullanıcıya gösterilmez)
+alt hiçbir dış kaynak kullanılamadı
   S-->>API: FoodSearchResult(yerel sonuçlar, ExternalUnavailable = true)
   API-->>W: 200 OK + "Dış kaynağa şu an ulaşılamıyor, yerel kayıtlar gösteriliyor"
-else
+else bir kaynak kullanılamadı
+  S-->>API: FoodSearchResult(yerel + çalışan kaynağın sonuçları, ExternalUnavailable = true)
+  API-->>W: 200 OK + "USDA FoodData Central kaynağına şu an ulaşılamıyor, diğer sonuçlar gösteriliyor"
+else hepsi çalıştı
   S-->>API: FoodSearchResult(yerel + dış sonuçlar)
   API-->>W: 200 OK (her sonuçta kaynak ve tarih etiketi)
 end

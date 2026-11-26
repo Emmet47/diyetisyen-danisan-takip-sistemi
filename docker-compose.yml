@@ -74,6 +74,9 @@ services:
       Smtp__Port: "1025"
       Jwt__SigningKey: ${JWT_SIGNING_KEY:?.env dosyasinda JWT_SIGNING_KEY bos}
       Usda__ApiKey: ${USDA_API_KEY:-}
+      # Türk yemekleri (PlateRank) ve USDA araması için çeviri (DeepL); boşsa o özellik kapalı kalır
+      PlateRank__ApiKey: ${PLATERANK_API_KEY:-}
+      DeepL__ApiKey: ${DEEPL_API_KEY:-}
       # Firebase (FCM) servis hesabı JSON'unun konteyner içindeki yolu; boşsa push gönderilmez, bildirim yalnızca uygulama içinde görünür
       Fcm__CredentialsPath: ${FCM_CREDENTIALS_PATH:-}
       Web__BaseUrl: http://localhost:3000

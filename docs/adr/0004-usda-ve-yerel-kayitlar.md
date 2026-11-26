@@ -1,6 +1,6 @@
 # ADR-0004: Dış besin verisi için USDA FoodData Central ve yerel kayıtlara dönüş
 
-**Durum:** Kabul edildi · 10.11.2026 · **İlgili:** FR-D3, FR-D4, NFR-E1, NFR-G5
+**Durum:** Kabul edildi · 10.11.2026 · Türkçe arama kısmı ADR-0007 ile değişti (22.11.2026) · **İlgili:** FR-D3, FR-D4, NFR-E1, NFR-G5
 
 **Bağlam:** Hocamız dış besin verisi sağlayıcısı entegrasyonunda kota, hata yönetimi, veri kaynağı ve güncellik bilgisi istiyor; API anahtarları yalnızca sunucuda kalmalı. Dış API erişilemezse sistem güvenli biçimde davranmalı ve daha önce doğrulanmış yerel kayıtlar kullanılabilmeli.
 
@@ -20,5 +20,5 @@
 
 - ➕ API anahtarı hiçbir istemciye gitmez.
 - ➕ USDA çökse de plan hazırlanabilir.
-- ➖ USDA veritabanı İngilizce. Adapter içindeki TR→EN besin sözlüğü (yaklaşık 250 kelime ve iki kelimelik ifade, ör. "yulaf ezmesi" → "rolled oats", "tavuk göğsü" → "chicken breast") sorguyu çevirir; çoğul/iyelik eki olan kelimede ek atılıp tekrar bakılır ("elmalar" → "apple"). Çevrilemeyen kelimeler aramadan çıkarılır, hiçbir kelime çevrilemezse sorgu olduğu gibi gider. İçe aktarırken Türkçe ad verilebilir, sonraki aramalar yerelde Türkçe çalışır.
+- ➖ USDA veritabanı İngilizce ve Türk yemeklerini içermiyor. İlk sürümde adapter içinde küçük bir TR→EN sözlük vardı; 22.11.2026'da sözlük kaldırıldı, yerine DeepL çevirisi ve Türk yemekleri için ikinci dış kaynak olarak PlateRank geldi (ADR-0007). İçe aktarırken Türkçe ad verilebilir, sonraki aramalar yerelde Türkçe çalışır.
 - ➖ Kota sayacı bellekte tutulduğu için uygulama yeniden başlayınca sıfırlanıyor (tek sunucu için kabul edilebilir).

@@ -4,8 +4,8 @@ namespace Ddts.Application.Foods;
 public interface IFoodSearchService
 {
     /// <summary>
-    /// Yerel kayıtlarda arar; includeExternal ise dış kaynakta da arar. source "Yerel" ya da "USDA" ise
-    /// yalnızca o kaynaktan gelen kayıtlar döner.
+    /// Yerel kayıtlarda arar; includeExternal ise dış kaynaklarda (PlateRank, USDA) da arar. source "Yerel",
+    /// "PlateRank" ya da "USDA" ise yalnızca o kaynaktan gelen kayıtlar döner.
     /// </summary>
     Task<FoodSearchResult> SearchAsync(string? query, string? source, bool includeExternal, CancellationToken cancellationToken = default);
 

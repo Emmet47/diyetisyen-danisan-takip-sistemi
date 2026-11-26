@@ -32,6 +32,14 @@ class IPaymentGateway {
 class FakePaymentAdapter {
   <<adapter · simülasyon>>
 }
+class ITranslator {
+  <<interface · port>>
+  +TranslateAsync(texts: string[0..*], sourceLanguage: string, targetLanguage: string) string[0..*]
+}
+class DeepLTranslationAdapter {
+  <<adapter · DeepL API>>
+  -cache: IMemoryCache
+}
 class IReportPdfRenderer {
   <<interface · port>>
   +Render(report: ProgressReportDto) byte[0..*]
@@ -75,6 +83,7 @@ IPhotoStorage <|.. S3PhotoStorageAdapter
 IPushNotificationSender <|.. FcmPushAdapter
 IEmailSender <|.. SmtpEmailAdapter
 IPaymentGateway <|.. FakePaymentAdapter
+ITranslator <|.. DeepLTranslationAdapter
 IReportPdfRenderer <|.. QuestPdfReportRenderer
 IAuditLogger <|.. EfAuditLogger
 IPasswordHasher <|.. AspNetPasswordHasher

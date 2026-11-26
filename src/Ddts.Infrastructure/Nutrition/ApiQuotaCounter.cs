@@ -1,12 +1,11 @@
-using Microsoft.Extensions.Options;
-
 namespace Ddts.Infrastructure.Nutrition;
 
 /// <summary>
-/// Dış API için saatlik istek sayacı (Şekil 4.9, singleton). Son bir saatteki istek sayısı kotaya ulaştıysa
-/// yeni istek yapılmaz; arama yerel sonuçlarla devam eder (FR-D4).
+/// Dış API için saatlik istek sayacı (Şekil 4.9). Her dış kaynağın kendi sayacı vardır; Program.cs'te
+/// anahtarla tekil (singleton) kaydedilir ("usda", "platerank"). Son bir saatteki istek sayısı kotaya
+/// ulaştıysa yeni istek yapılmaz; arama yerel sonuçlarla devam eder (FR-D4).
 /// </summary>
-public sealed class ApiQuotaCounter(IOptions<UsdaOptions> options, TimeProvider timeProvider)
+public sealed class ApiQuotaCounter(int hourlyQuota, TimeProvider timeProvider)
 {
     private readonly Queue<DateTimeOffset> _requests = new();
     private readonly Lock _lock = new();
@@ -14,7 +13,6 @@ public sealed class ApiQuotaCounter(IOptions<UsdaOptions> options, TimeProvider 
     public bool TryConsume()
     {
         var now = timeProvider.GetUtcNow();
-        var limitPerHour = options.Value.HourlyQuota;
 
         lock (_lock)
         {
@@ -23,7 +21,7 @@ public sealed class ApiQuotaCounter(IOptions<UsdaOptions> options, TimeProvider 
                 _requests.Dequeue();
             }
 
-            if (_requests.Count >= limitPerHour)
+            if (_requests.Count >= hourlyQuota)
             {
                 return false;
             }

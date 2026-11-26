@@ -33,12 +33,15 @@ digraph G {
     p_file  [shape=circle, width=0.16, height=0.16, fixedsize=true, label="", style=filled, fillcolor="white", xlabel="IPhotoStorage"];
     p_pay   [shape=circle, width=0.16, height=0.16, fixedsize=true, label="", style=filled, fillcolor="white", xlabel="IPaymentGateway"];
     p_pdf   [shape=circle, width=0.16, height=0.16, fixedsize=true, label="", style=filled, fillcolor="white", xlabel="IReportPdfRenderer"];
+    p_tr    [shape=circle, width=0.16, height=0.16, fixedsize=true, label="", style=filled, fillcolor="white", xlabel="ITranslator"];
 
     subgraph cluster_driven {
       label="Sürülen (driven) adapter'lar · Ddts.Infrastructure"; style="rounded,dashed"; color="#888888"; fontsize=10;
       ef    [label="«component»\nEF Core kalıcılık\nEf*Repository · EfUnitOfWork\nDdtsDbContext"];
       lfood [label="«component»\nLocalNutritionDataAdapter"];
+      prank [label="«component»\nPlateRankAdapter"];
       usda  [label="«component»\nUsdaFoodDataCentralAdapter"];
+      deepl [label="«component»\nDeepLTranslationAdapter"];
       fcm   [label="«component»\nFcmPushAdapter"];
       smtp  [label="«component»\nSmtpEmailAdapter"];
       s3    [label="«component»\nS3PhotoStorageAdapter"];
@@ -51,7 +54,9 @@ digraph G {
   objst   [shape=cylinder, fillcolor="#ffffff", label="SeaweedFS\n(S3 uyumlu, özel bucket)"];
   fcmext  [shape=box3d, fillcolor="#ffffff", label="«external»\nFirebase Cloud Messaging"];
   smtpext [shape=box3d, fillcolor="#ffffff", label="«external»\nSMTP sunucusu\n(geliştirmede Mailpit)"];
+  prext   [shape=box3d, fillcolor="#ffffff", label="«external»\nPlateRank API\n(Türk yemekleri, salt-okunur)"];
   usdaext [shape=box3d, fillcolor="#ffffff", label="«external»\nUSDA FoodData Central API"];
+  deeplext [shape=box3d, fillcolor="#ffffff", label="«external»\nDeepL API Free\n(çeviri)"];
 
   web -> rest    [style=dashed, arrowhead=vee, label="HTTPS / JSON"];
   mobile -> rest [style=dashed, arrowhead=vee, label="HTTPS / JSON"];
@@ -68,10 +73,13 @@ digraph G {
   app -> p_file  [style=dashed, arrowhead=vee];
   app -> p_pay   [style=dashed, arrowhead=vee];
   app -> p_pdf   [style=dashed, arrowhead=vee];
+  app -> p_tr    [style=dashed, arrowhead=vee];
 
   p_repo -> ef    [arrowhead=none];
   p_food -> lfood [arrowhead=none];
+  p_food -> prank [arrowhead=none];
   p_food -> usda  [arrowhead=none];
+  p_tr   -> deepl [arrowhead=none];
   p_push -> fcm   [arrowhead=none];
   p_mail -> smtp  [arrowhead=none];
   p_file -> s3    [arrowhead=none];
@@ -80,7 +88,9 @@ digraph G {
 
   ef    -> pg      [style=dashed, arrowhead=vee, label="Npgsql"];
   lfood -> pg      [style=dashed, arrowhead=vee, label="SQL (ILIKE)"];
+  prank -> prext   [style=dashed, arrowhead=vee, label="HTTPS + API anahtarı"];
   usda  -> usdaext [style=dashed, arrowhead=vee, label="HTTPS + API anahtarı"];
+  deepl -> deeplext [style=dashed, arrowhead=vee, label="HTTPS + API anahtarı"];
   fcm   -> fcmext  [style=dashed, arrowhead=vee, label="HTTPS"];
   smtp  -> smtpext [style=dashed, arrowhead=vee, label="SMTP"];
   s3    -> objst   [style=dashed, arrowhead=vee, label="S3 API"];

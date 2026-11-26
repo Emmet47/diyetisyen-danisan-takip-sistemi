@@ -61,14 +61,20 @@ export type ProgressReport = {
 
 // ---- D. Besin (NutritionItem: sistemin standart besin modeli) ----
 export type Food = {
-  /** Yerel kayıtta dolu; dış kaynaktan (USDA) yeni gelen satırda null: önce içe aktarılmalı. */
+  /** Yerel kayıtta dolu; dış kaynaktan (PlateRank, USDA) yeni gelen satırda null: önce içe aktarılmalı. */
   id: string | null; name: string; portionName: string; portionGrams: number;
   energyKcalPer100g: number; proteinPer100g: number; carbsPer100g: number; fatPer100g: number;
   sourceName: string; externalId: string | null; retrievedAt: string | null;
+  /**
+   * Kaynak porsiyonun gramını vermiyorsa (PlateRank'teki Türk yemekleri) true: portionGrams 0'dır ve
+   * enerji/makro alanları 100 g için değil 1 porsiyon içindir. Aktarırken gram girilir, API 100 g'a çevirir.
+   */
+  valuesPerPortion: boolean
 }
 export type FoodSearchResult = { items: Food[]; externalUnavailable: boolean; message: string | null }
 export type FoodInput = Pick<Food, 'name' | 'portionName' | 'portionGrams' | 'energyKcalPer100g' | 'proteinPer100g' | 'carbsPer100g' | 'fatPer100g'>
-export type ImportFoodInput = { externalId: string; name: string | null; portionName: string | null; portionGrams: number | null }
+/** source: arama sonucundaki sourceName ("PlateRank", "USDA FoodData Central"); boşsa API USDA sayar. */
+export type ImportFoodInput = { externalId: string; source: string; name: string | null; portionName: string | null; portionGrams: number | null }
 
 // ---- H. Enerji ----
 export type EnergyFormula = 'MifflinStJeor' | 'HarrisBenedict'

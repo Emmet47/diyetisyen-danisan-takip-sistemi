@@ -20,7 +20,7 @@
 | 404 Not Found | Kayıt yok ya da kullanıcıya ait değil (IDOR koruması) |
 | 409 Conflict | Mevcut durumla çakışma: paket limiti dolu, slot dolu, aynı gün ikinci ölçüm, taslak olmayan planı düzenleme |
 | 429 Too Many Requests | Giriş denemesi sınırı aşıldı |
-| 503 Service Unavailable | Dış kaynağa (USDA) ulaşılamadı; ör. besin içe aktarma. Aramada dış kaynak yoksa 503 değil, 200 + `externalUnavailable` döner |
+| 503 Service Unavailable | Dış kaynağa (PlateRank, USDA) ulaşılamadı; ör. besin içe aktarma. Aramada dış kaynak yoksa 503 değil, 200 + `externalUnavailable` döner |
 
 İstemciler (web ve mobil) hata mesajı olarak ProblemDetails'teki `detail` alanını gösterir; 409'da başlık da eklenir
 (ör. "Bu saat az önce doldu. Lütfen başka bir saat seç."). `detail` yoksa durum koduna göre Türkçe hazır metin gösterilir.
@@ -57,10 +57,10 @@
 
 | Metot | Yol | Rol | Açıklama |
 | --- | --- | --- | --- |
-| GET | /api/foods?q=&source=&external= | Diyetisyen | Arama; `external=true` ise USDA da aranır (FR-D1, FR-D4) |
+| GET | /api/foods?q=&source=&external= | Diyetisyen | Arama; `external=true` ise PlateRank ve USDA da aranır, `source=Yerel\|PlateRank\|USDA` süzer (FR-D1, FR-D4) |
 | POST | /api/foods | Diyetisyen | Yerel besin ekler (FR-D2) |
 | PUT · DELETE | /api/foods/{id} | Diyetisyen | Yalnızca kendi kaydını düzenler/siler |
-| POST | /api/foods/import | Diyetisyen | USDA sonucunu yerel veritabanına aktarır (FR-D3) |
+| POST | /api/foods/import | Diyetisyen | Dış kaynak (PlateRank, USDA) sonucunu yerel veritabanına aktarır (FR-D3) |
 | POST | /api/energy/calculate | Diyetisyen | BMH, günlük ihtiyaç ve hedef (FR-H1) |
 | GET · POST | /api/plans | Diyetisyen | Planlar (`?clientId=`) / Builder ile yeni plan (FR-E1) |
 | GET · PUT · DELETE | /api/plans/{id} | Diyetisyen | Plan ve toplamları; yalnız taslak düzenlenir ve silinir |
@@ -241,6 +241,39 @@ HTTP/1.1 200 OK
   "message": "Dış kaynağa şu an ulaşılamıyor, yerel kayıtlar gösteriliyor."
 }
 ```
+
+**7b) Türk yemeği arama ve aktarma (PlateRank, porsiyon başına değerler)**
+
+PlateRank'teki Türk yemeklerinde porsiyonun gramı yok: bu satırlarda `valuesPerPortion: true`, `portionGrams: 0` ve enerji/makro alanları 1 porsiyon içindir. USDA satırlarında `valuesPerPortion: false` ve değerler 100 g içindir; USDA'ya giden sorgu İngilizceye, gelen adlar Türkçeye çevrilir (DeepL, ADR-0007). Örnek değerler uydurmadır.
+
+```http
+GET /api/foods?q=mercimek&external=true
+
+HTTP/1.1 200 OK
+{
+  "items": [
+    { "id": null, "name": "Mercimek çorbası", "portionName": "1 porsiyon", "portionGrams": 0,
+      "energyKcalPer100g": 180, "proteinPer100g": 9, "carbsPer100g": 25, "fatPer100g": 5,
+      "sourceName": "PlateRank", "externalId": "aaaaaaaa-1111-4111-8111-000000000001",
+      "retrievedAt": "2026-10-21T13:58:35Z", "valuesPerPortion": true },
+    { "id": null, "name": "Mercimek, olgun tohumlar, pişmiş", "portionName": "100 g", "portionGrams": 100,
+      "energyKcalPer100g": 116, "proteinPer100g": 9, "carbsPer100g": 20.1, "fatPer100g": 0.4,
+      "sourceName": "USDA FoodData Central", "externalId": "172421",
+      "retrievedAt": "2026-11-22T09:12:00Z", "valuesPerPortion": false }
+  ],
+  "externalUnavailable": false,
+  "message": null
+}
+
+POST /api/foods/import
+{ "externalId": "aaaaaaaa-1111-4111-8111-000000000001", "source": "PlateRank",
+  "name": "Mercimek çorbası", "portionName": "1 kase", "portionGrams": 250 }
+
+HTTP/1.1 200 OK
+{ "id": "0193a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b" }      (100 g'da 72 kcal, 3,6 g protein ... olarak kaydedilir)
+```
+
+`source` boşsa USDA sayılır. `valuesPerPortion: true` olan satırda `portionGrams` gönderilmezse 400 döner.
 
 **8) Yetkisiz erişim**
 

@@ -13,6 +13,7 @@ using Ddts.Application.Abstractions.Persistence;
 using Ddts.Application.Abstractions.Reports;
 using Ddts.Application.Abstractions.Security;
 using Ddts.Application.Abstractions.Storage;
+using Ddts.Application.Abstractions.Translation;
 using Ddts.Application.Admin;
 using Ddts.Application.Appointments;
 using Ddts.Application.Auth;
@@ -42,6 +43,7 @@ using Ddts.Infrastructure.Persistence.Repositories;
 using Ddts.Infrastructure.Reports;
 using Ddts.Infrastructure.Security;
 using Ddts.Infrastructure.Storage;
+using Ddts.Infrastructure.Translation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -160,8 +162,8 @@ builder.Services.AddScoped<IEmailSender, SmtpEmailAdapter>();
 builder.Services.AddOptions<SmtpOptions>().BindConfiguration(SmtpOptions.SectionName);
 builder.Services.AddSingleton(TimeProvider.System);   // testlerde FakeTimeProvider takılır
 
-// Besin kaynakları (Adapter, Şekil 4.9): aynı port, iki adapter; hangisinin nereye gideceği anahtarla seçilir.
-// Yeni kaynak eklemek = yeni adapter + buraya bir kayıt (NFR-B1).
+// Besin kaynakları (Adapter, Şekil 4.9): aynı port, üç adapter; hangisinin nereye gideceği anahtarla seçilir.
+// Yeni kaynak eklemek = yeni adapter + buraya bir kayıt (NFR-B1). Her dış kaynağın kendi saatlik kotası var.
 builder.Services.AddOptions<UsdaOptions>().BindConfiguration(UsdaOptions.SectionName);
 builder.Services.AddHttpClient<UsdaFdcClient>((serviceProvider, client) =>
 {
@@ -169,9 +171,34 @@ builder.Services.AddHttpClient<UsdaFdcClient>((serviceProvider, client) =>
     client.BaseAddress = new Uri(usda.BaseUrl);
     client.Timeout = TimeSpan.FromSeconds(usda.TimeoutSeconds);   // ADR-0004: 3 sn
 });
-builder.Services.AddSingleton<ApiQuotaCounter>();
+builder.Services.AddKeyedSingleton("usda", (serviceProvider, _) => new ApiQuotaCounter(
+    serviceProvider.GetRequiredService<IOptions<UsdaOptions>>().Value.HourlyQuota,
+    serviceProvider.GetRequiredService<TimeProvider>()));
+
+builder.Services.AddOptions<PlateRankOptions>().BindConfiguration(PlateRankOptions.SectionName);
+builder.Services.AddHttpClient<PlateRankClient>((serviceProvider, client) =>
+{
+    var plateRank = serviceProvider.GetRequiredService<IOptions<PlateRankOptions>>().Value;
+    client.BaseAddress = new Uri(plateRank.BaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(plateRank.TimeoutSeconds);
+});
+builder.Services.AddKeyedSingleton("platerank", (serviceProvider, _) => new ApiQuotaCounter(
+    serviceProvider.GetRequiredService<IOptions<PlateRankOptions>>().Value.HourlyQuota,
+    serviceProvider.GetRequiredService<TimeProvider>()));
+
 builder.Services.AddKeyedScoped<NutritionDataPort, LocalNutritionDataAdapter>("local");
+builder.Services.AddKeyedScoped<NutritionDataPort, PlateRankAdapter>("platerank");
 builder.Services.AddKeyedScoped<NutritionDataPort, UsdaFoodDataCentralAdapter>("usda");
+
+// Çeviri (ADR-0007): USDA'ya giden Türkçe sorgu ve gelen İngilizce adlar DeepL ile çevrilir.
+builder.Services.AddMemoryCache();
+builder.Services.AddOptions<DeepLOptions>().BindConfiguration(DeepLOptions.SectionName);
+builder.Services.AddHttpClient<ITranslator, DeepLTranslationAdapter>((serviceProvider, client) =>
+{
+    var deepL = serviceProvider.GetRequiredService<IOptions<DeepLOptions>>().Value;
+    client.BaseAddress = new Uri(deepL.ResolveBaseUrl());
+    client.Timeout = TimeSpan.FromSeconds(deepL.TimeoutSeconds);
+});
 
 // Fotoğraf deposu (SeaweedFS, S3 uyumlu), push (FCM) ve PDF (QuestPDF)
 builder.Services.AddOptions<StorageOptions>().BindConfiguration(StorageOptions.SectionName);
@@ -204,7 +231,11 @@ builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<IFoodService, FoodService>();
 builder.Services.AddScoped<IFoodSearchService>(serviceProvider => new FoodSearchService(
     serviceProvider.GetRequiredKeyedService<NutritionDataPort>("local"),
-    serviceProvider.GetRequiredKeyedService<NutritionDataPort>("usda"),
+    [
+        serviceProvider.GetRequiredKeyedService<NutritionDataPort>("platerank"),   // Türk yemekleri önce
+        serviceProvider.GetRequiredKeyedService<NutritionDataPort>("usda"),
+    ],
+    serviceProvider.GetRequiredService<ITranslator>(),
     serviceProvider.GetRequiredService<IFoodItemRepository>(),
     serviceProvider.GetRequiredService<IUnitOfWork>(),
     serviceProvider.GetRequiredService<ICurrentUser>()));

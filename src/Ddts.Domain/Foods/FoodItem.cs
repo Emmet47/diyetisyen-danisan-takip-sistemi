@@ -5,7 +5,7 @@ namespace Ddts.Domain.Foods;
 /// <summary>
 /// Yerel besin kaydı (Şekil 4.2, FR-D1–D3). Değerler 100 g içindir; porsiyonun gram karşılığı ayrıca tutulur.
 /// DietitianId boşsa herkesin kullandığı ortak kayıttır, doluysa o diyetisyenin kendi kaydıdır.
-/// USDA'dan içe aktarılan besinde kaynak adı, dış kimlik (fdcId) ve çekilme zamanı dolu olur.
+/// Dış kaynaktan (PlateRank, USDA) içe aktarılan besinde kaynak adı, dış kimlik ve çekilme zamanı dolu olur.
 /// </summary>
 public sealed class FoodItem
 {
@@ -61,10 +61,10 @@ public sealed class FoodItem
 
     public decimal FatPer100g { get; private set; }
 
-    /// <summary>Veri kaynağı: "Yerel" ya da "USDA FoodData Central".</summary>
+    /// <summary>Veri kaynağı: "Yerel", "PlateRank" ya da "USDA FoodData Central".</summary>
     public string SourceName { get; private set; } = null!;
 
-    /// <summary>Dış kaynaktaki kimlik (USDA fdcId).</summary>
+    /// <summary>Dış kaynaktaki kimlik (USDA fdcId, PlateRank id).</summary>
     public string? ExternalId { get; private set; }
 
     /// <summary>Dış kaynaktan çekildiği an (güncellik bilgisi).</summary>
@@ -72,7 +72,7 @@ public sealed class FoodItem
 
     /// <summary>Verilen gram için enerji ve makrolar (Composite'in yaprağı MealItem bunu çağırır).</summary>
     /// <summary>
-    /// Diyetisyenin kendi besin kaydını düzeltir (FR-D2). Kaynak bilgisi (Yerel / USDA, dış kimlik) değişmez.
+    /// Diyetisyenin kendi besin kaydını düzeltir (FR-D2). Kaynak bilgisi (Yerel / PlateRank / USDA, dış kimlik) değişmez.
     /// Kaydın kime ait olduğu (ortak kayıtlar düzenlenemez) FoodService'te denetlenir.
     /// </summary>
     public void Update(

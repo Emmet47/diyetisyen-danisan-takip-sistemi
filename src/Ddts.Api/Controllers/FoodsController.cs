@@ -14,9 +14,10 @@ namespace Ddts.Api.Controllers;
 public sealed class FoodsController(IFoodService foodService, IFoodSearchService foodSearchService) : ControllerBase
 {
     /// <summary>
-    /// Besin arama (FR-D1). Yerel kayıtlar (ortak + kendi) her zaman aranır; external=true ise USDA'da da aranır.
-    /// source=Yerel ya da source=USDA ile kaynağa göre süzülür. Dış kaynak çalışmazsa yine 200 döner:
-    /// externalUnavailable=true ve uyarı mesajıyla yalnızca yerel sonuçlar (FR-D4).
+    /// Besin arama (FR-D1). Yerel kayıtlar (ortak + kendi) her zaman aranır; external=true ise dış kaynaklarda
+    /// (PlateRank, USDA) da aranır. source=Yerel, source=PlateRank ya da source=USDA ile kaynağa göre süzülür.
+    /// USDA'ya giden sorgu İngilizceye, gelen adlar Türkçeye çevrilir (DeepL). Bir dış kaynak çalışmazsa yine
+    /// 200 döner: externalUnavailable=true ve uyarı mesajıyla diğer sonuçlar (FR-D4).
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(FoodSearchResult), StatusCodes.Status200OK)]
@@ -63,17 +64,20 @@ public sealed class FoodsController(IFoodService foodService, IFoodSearchService
     }
 
     /// <summary>
-    /// Dış kaynaktaki (USDA) besini yerel veritabanına aktarır (FR-D3). Türkçe ad ve porsiyon verilebilir.
-    /// Daha önce aktarıldıysa mevcut kaydın kimliği döner.
+    /// Dış kaynaktaki (PlateRank ya da USDA) besini yerel veritabanına aktarır (FR-D3). Türkçe ad ve porsiyon
+    /// verilebilir. Kaynak porsiyon gramını vermiyorsa (valuesPerPortion) portionGrams zorunludur; değerler
+    /// 100 g'a çevrilir. Daha önce aktarıldıysa mevcut kaydın kimliği döner.
     /// </summary>
+    /// <response code="400">Porsiyon gramı gerekirken girilmedi, değerler sınır dışı ya da kaynak bilinmiyor.</response>
     /// <response code="503">Dış kaynağa şu an ulaşılamıyor.</response>
     [HttpPost("import")]
     [ProducesResponseType(typeof(IdResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<ActionResult<IdResponse>> Import(ImportFoodRequest request, CancellationToken cancellationToken) =>
         Ok(new IdResponse(await foodSearchService.ImportAsync(
-            new ImportFoodCommand(request.ExternalId!, request.Name, request.PortionName, request.PortionGrams),
+            new ImportFoodCommand(request.ExternalId!, request.Name, request.PortionName, request.PortionGrams, request.Source),
             cancellationToken)));
 }
 
@@ -91,12 +95,16 @@ public sealed record FoodRequest(
         Name!, PortionName!, PortionGrams!.Value, EnergyKcalPer100g!.Value, ProteinPer100g!.Value, CarbsPer100g!.Value, FatPer100g!.Value);
 }
 
-/// <summary>Dış kaynaktan aktarma: externalId arama sonucundaki kimlik; ad ve porsiyon isteğe bağlı.</summary>
+/// <summary>
+/// Dış kaynaktan aktarma: externalId ve source arama sonucundaki kimlik ve kaynak adı (source boşsa USDA);
+/// ad ve porsiyon isteğe bağlı.
+/// </summary>
 public sealed record ImportFoodRequest(
     [Required, StringLength(50)] string? ExternalId,
     [StringLength(150)] string? Name,
     [StringLength(50)] string? PortionName,
-    decimal? PortionGrams);
+    decimal? PortionGrams,
+    [StringLength(50)] string? Source = null);
 
 /// <summary>Oluşturulan kaydın kimliği.</summary>
 public sealed record IdResponse(Guid Id);
